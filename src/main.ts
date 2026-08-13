@@ -1,114 +1,246 @@
+import { Notice, Plugin, TFile, WorkspaceLeaf } from 'obsidian';
 import {
-	Editor,
-	MarkdownView,
-	MarkdownFileInfo,
-	Modal,
-	Notice,
-	Plugin,
-} from 'obsidian';
-import {
+	ChatterboxSettings,
+	ChatterboxSettingTab,
 	DEFAULT_SETTINGS,
-	MyPluginSettings,
-	SampleSettingTab,
+	loadApiKey,
 } from './settings';
+import { CHATTERBOX_VIEW_TYPE, ChatterboxView, PanelActions } from './view';
+import { ChatMessage } from './types';
+import { streamCompletion } from './openrouter';
+import { renameChat } from './chatFile';
+import { HistoryModal } from './historyModal';
+import { PromptModal } from './promptModal';
+import { UNTITLED, sanitizeTitle } from './titles';
 
-// Remember to rename these classes and interfaces!
+const TITLE_INSTRUCTION =
+	'Reply with a short title for this conversation: at most six words, no quotes, no trailing punctuation. Reply with the title alone.';
 
-export default class MyPlugin extends Plugin {
-	settings!: MyPluginSettings;
+export default class ChatterboxPlugin extends Plugin {
+	settings: ChatterboxSettings = DEFAULT_SETTINGS;
 
-	async onload() {
+	async onload(): Promise<void> {
 		await this.loadSettings();
 
-		// This creates an icon in the left ribbon.
-		this.addRibbonIcon('dice', 'Sample', (_evt: MouseEvent) => {
-			// Called when the user clicks the icon.
-			new Notice('This is a notice!');
+		this.registerView(
+			CHATTERBOX_VIEW_TYPE,
+			(leaf) => new ChatterboxView(leaf, this),
+		);
+
+		this.addRibbonIcon('message-square', 'Chatterbox', () => {
+			void this.openPanel();
 		});
 
-		// This adds a status bar item to the bottom of the app. Does not work on mobile apps.
-		const statusBarItemEl = this.addStatusBarItem();
-		statusBarItemEl.setText('Status bar text');
-
-		// This adds a simple command that can be triggered anywhere
 		this.addCommand({
-			id: 'open-modal-simple',
-			name: 'Open modal (simple)',
+			id: 'open-panel',
+			name: 'Open panel',
 			callback: () => {
-				new SampleModal(this.app).open();
+				void this.openPanel();
 			},
 		});
-		// This adds an editor command that can perform some operation on the current editor instance
+
 		this.addCommand({
-			id: 'replace-selected',
-			name: 'Replace selected content',
-			editorCallback: (
-				editor: Editor,
-				_ctx: MarkdownView | MarkdownFileInfo,
-			) => {
-				editor.replaceSelection('Sample editor command');
+			id: 'open-history',
+			name: 'Browse chat history',
+			callback: () => {
+				new HistoryModal(this.app, this.settings.chatFolder, (file) => {
+					void this.openPanel().then(() => this.revealChat(file));
+				}).open();
 			},
 		});
-		// This adds a complex command that can check whether the current state of the app allows execution of the command
+
+		// Keyboard routes to the panel's affordances (SPEC §4.4). Each is a
+		// checkCallback so it only appears when it can actually do something.
+		this.addPanelCommand('stop-generating', 'Stop generating', (actions) =>
+			actions.stop(),
+		);
+		this.addPanelCommand(
+			'edit-last-message',
+			'Edit my last message',
+			(actions) => actions.editLastMessage(),
+		);
+		this.addPanelCommand(
+			'regenerate-last-reply',
+			'Regenerate the last reply',
+			(actions) => actions.regenerateLastReply(),
+		);
+		this.addPanelCommand('new-chat', 'New chat', (actions) => {
+			actions.newChat();
+			return true;
+		});
+
 		this.addCommand({
-			id: 'open-modal-complex',
-			name: 'Open modal (complex)',
+			id: 'rename-chat',
+			name: 'Rename the active chat',
 			checkCallback: (checking: boolean) => {
-				// Conditions to check
-				const markdownView =
-					this.app.workspace.getActiveViewOfType(MarkdownView);
-				if (markdownView) {
-					// If checking is true, we're simply "checking" if the command can be run.
-					// If checking is false, then we want to actually perform the operation.
-					if (!checking) {
-						new SampleModal(this.app).open();
-					}
-
-					// This command will only show up in Command Palette when the check function returns true
-					return true;
-				}
-				return false;
+				const file = this.activeChatFile();
+				if (!file) return false;
+				if (!checking) this.promptRename(file);
+				return true;
 			},
 		});
 
-		// This adds a settings tab so the user can configure various aspects of the plugin
-		this.addSettingTab(new SampleSettingTab(this.app, this));
+		// Keep the restore pointer correct when a chat is renamed or moved.
+		this.registerEvent(
+			this.app.vault.on('rename', (file, oldPath) => {
+				if (oldPath === this.settings.lastActiveChat) {
+					void this.rememberActiveChat(file.path);
+				}
+			}),
+		);
 
-		// If the plugin hooks up any global DOM events (on parts of the app that doesn't belong to this plugin)
-		// Using this function will automatically remove the event listener when this plugin is disabled.
-		this.registerDomEvent(activeDocument, 'click', (_evt: MouseEvent) => {
-			new Notice('Click');
+		this.addSettingTab(new ChatterboxSettingTab(this.app, this));
+	}
+
+	/**
+	 * Opens the chat in the right side panel, reusing the existing leaf if one
+	 * is already open. Side panel only — see SPEC §2.
+	 */
+	async openPanel(): Promise<void> {
+		const { workspace } = this.app;
+
+		let leaf: WorkspaceLeaf | null =
+			workspace.getLeavesOfType(CHATTERBOX_VIEW_TYPE)[0] ?? null;
+
+		if (!leaf) {
+			leaf = workspace.getRightLeaf(false);
+			await leaf?.setViewState({
+				type: CHATTERBOX_VIEW_TYPE,
+				active: true,
+			});
+		}
+
+		if (leaf) {
+			await workspace.revealLeaf(leaf);
+		}
+	}
+
+	/**
+	 * Registers a command that acts on the open panel. The action reports
+	 * whether it applies, so the command stays out of the palette when it
+	 * would do nothing.
+	 */
+	private addPanelCommand(
+		id: string,
+		name: string,
+		run: (actions: PanelActions) => boolean,
+	): void {
+		this.addCommand({
+			id,
+			name,
+			checkCallback: (checking: boolean) => {
+				const actions = this.panelActions();
+				if (!actions) return false;
+				if (checking) return true;
+				return run(actions);
+			},
 		});
-
-		// When registering intervals, this function will automatically clear the interval when the plugin is disabled.
-		this.registerInterval(
-			window.setInterval(() => console.log('setInterval'), 5 * 60 * 1000),
-		);
 	}
 
-	onunload() {}
-
-	async loadSettings() {
-		this.settings = Object.assign(
-			{},
-			DEFAULT_SETTINGS,
-			(await this.loadData()) as Partial<MyPluginSettings>,
-		);
+	private panelActions(): PanelActions | null {
+		for (const leaf of this.app.workspace.getLeavesOfType(
+			CHATTERBOX_VIEW_TYPE,
+		)) {
+			if (leaf.view instanceof ChatterboxView) {
+				return leaf.view.panelActions();
+			}
+		}
+		return null;
 	}
 
-	async saveSettings() {
+	/** Asks the open panel, if any, to load a chat. */
+	private revealChat(file: TFile): void {
+		for (const leaf of this.app.workspace.getLeavesOfType(
+			CHATTERBOX_VIEW_TYPE,
+		)) {
+			const view = leaf.view;
+			if (view instanceof ChatterboxView) {
+				view.openChat(file);
+				return;
+			}
+		}
+	}
+
+	private activeChatFile(): TFile | null {
+		if (this.settings.lastActiveChat === '') return null;
+		const file = this.app.vault.getAbstractFileByPath(
+			this.settings.lastActiveChat,
+		);
+		return file instanceof TFile ? file : null;
+	}
+
+	private promptRename(file: TFile): void {
+		new PromptModal(
+			this.app,
+			'Rename chat',
+			file.basename,
+			'Rename',
+			(title) => {
+				void renameChat(this.app, file, sanitizeTitle(title)).catch(
+					(error: unknown) => {
+						new Notice(
+							`Chatterbox: rename failed — ${error instanceof Error ? error.message : String(error)}`,
+						);
+					},
+				);
+			},
+		).open();
+	}
+
+	async rememberActiveChat(path: string | null): Promise<void> {
+		const next = path ?? '';
+		if (this.settings.lastActiveChat === next) return;
+		this.settings.lastActiveChat = next;
+		await this.saveSettings();
+	}
+
+	/**
+	 * Asks the model for a title. Opt-in only (SPEC §4.5) and best-effort:
+	 * returns null rather than throwing, since a title is never worth
+	 * interrupting a conversation over.
+	 */
+	async generateTitle(messages: readonly ChatMessage[]): Promise<string | null> {
+		const apiKey = loadApiKey(this.app, this.settings);
+		if (apiKey === '') return null;
+
+		const transcript = messages
+			.map((message) => `${message.role}: ${message.content}`)
+			.join('\n\n')
+			.slice(0, 4000);
+
+		const request: ChatMessage[] = [
+			{ id: 'title', role: 'user', content: transcript },
+		];
+
+		let title = '';
+		for await (const delta of streamCompletion({
+			apiKey,
+			model: this.defaultModel(),
+			messages: request,
+			system: TITLE_INSTRUCTION,
+		})) {
+			title += delta;
+		}
+
+		const cleaned = sanitizeTitle(
+			title.trim().replace(/^["']|["']$/g, '').split('\n')[0] ?? '',
+		);
+		return cleaned === UNTITLED ? null : cleaned;
+	}
+
+	/** Falls back to the first configured model if the default was removed. */
+	defaultModel(): string {
+		const { models, defaultModel } = this.settings;
+		if (models.includes(defaultModel)) return defaultModel;
+		return models[0] ?? DEFAULT_SETTINGS.defaultModel;
+	}
+
+	async loadSettings(): Promise<void> {
+		const stored = (await this.loadData()) as Partial<ChatterboxSettings> | null;
+		this.settings = { ...DEFAULT_SETTINGS, ...stored };
+	}
+
+	async saveSettings(): Promise<void> {
 		await this.saveData(this.settings);
-	}
-}
-
-class SampleModal extends Modal {
-	onOpen() {
-		const { contentEl } = this;
-		contentEl.setText('Woah!');
-	}
-
-	onClose() {
-		const { contentEl } = this;
-		contentEl.empty();
 	}
 }

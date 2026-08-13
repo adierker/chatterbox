@@ -1,11 +1,10 @@
 {
-	"id": "sample-plugin",
-	"name": "Sample Plugin",
-	"version": "1.0.0",
-	"minAppVersion": "1.0.0",
-	"description": "Demonstrates some of the capabilities of the Obsidian API.",
-	"author": "Obsidian",
-	"authorUrl": "https://obsidian.md",
-	"fundingUrl": "https://obsidian.md/pricing",
+	"id": "chatterbox",
+	"name": "Chatterbox",
+	"version": "0.1.0",
+	"minAppVersion": "1.7.2",
+	"description": "A minimal AI chat panel with explicit context attachment and non-destructive editing.",
+	"author": "adierker",
+	"authorUrl": "https://github.com/adierker",
 	"isDesktopOnly": false
 }

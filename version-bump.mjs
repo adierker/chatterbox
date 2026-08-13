@@ -1,17 +1,7 @@
 import { readFileSync, writeFileSync } from 'fs';
 
-const targetVersion = process.env.npm_package_version;
-
-// read minAppVersion from manifest.json and bump version to target version
+// Sync manifest.json to the version npm just wrote into package.json.
+// Run automatically by `npm version patch|minor|major`.
 const manifest = JSON.parse(readFileSync('manifest.json', 'utf8'));
-const { minAppVersion } = manifest;
-manifest.version = targetVersion;
-writeFileSync('manifest.json', JSON.stringify(manifest, null, '\t'));
-
-// update versions.json with target version and minAppVersion from manifest.json
-// but only if the target version is not already in versions.json
-const versions = JSON.parse(readFileSync('versions.json', 'utf8'));
-if (!(targetVersion in versions)) {
-	versions[targetVersion] = minAppVersion;
-	writeFileSync('versions.json', JSON.stringify(versions, null, '\t'));
-}
+manifest.version = process.env.npm_package_version;
+writeFileSync('manifest.json', JSON.stringify(manifest, null, '\t') + '\n');
