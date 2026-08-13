@@ -1,6 +1,6 @@
 {
 	"name": "chatterbox",
-	"version": "0.1.3",
+	"version": "0.1.4",
 	"description": "A minimal AI chat panel for Obsidian.",
 	"private": true,
 	"main": "main.js",
