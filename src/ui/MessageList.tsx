@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type ChatterboxPlugin from '../main';
 import { ChatMessage, ChatParameters } from '../types';
 import { MarkdownContent } from './MarkdownContent';
@@ -28,10 +28,46 @@ export function MessageList({
 	parameters,
 	onRewind,
 }: MessageListProps) {
-	const bottomRef = useRef<HTMLDivElement>(null);
+	const scrollRef = useRef<HTMLDivElement>(null);
+	// Whether the view is following the bottom. A ref as well as state because
+	// the scroll effect reads it without wanting to re-run when it changes.
+	const followingRef = useRef(true);
+	const [following, setFollowing] = useState(true);
+	const countRef = useRef(messages.length);
+
+	const setFollow = (value: boolean) => {
+		if (followingRef.current === value) return;
+		followingRef.current = value;
+		setFollowing(value);
+	};
+
+	/**
+	 * Follow new output only while the reader is already at the bottom. A long
+	 * reply should be readable from the top while the rest of it streams in,
+	 * which is impossible if every token yanks the view back down.
+	 */
+	const onScroll = () => {
+		const element = scrollRef.current;
+		if (!element) return;
+
+		const distance =
+			element.scrollHeight - element.scrollTop - element.clientHeight;
+		setFollow(distance < 64);
+	};
 
 	useEffect(() => {
-		if (editingId === null) bottomRef.current?.scrollIntoView({ block: 'end' });
+		const element = scrollRef.current;
+		if (!element || editingId !== null) return;
+
+		// A new message — sending, or a rewind landing — means the reader
+		// acted, so resume following even if they had scrolled away.
+		if (messages.length !== countRef.current) {
+			countRef.current = messages.length;
+			followingRef.current = true;
+			setFollowing(true);
+		}
+
+		if (followingRef.current) element.scrollTop = element.scrollHeight;
 	}, [messages, editingId]);
 
 	// An edit target that vanished (a rewind landed) must not stay open.
@@ -49,8 +85,20 @@ export function MessageList({
 		);
 	}
 
+	const jumpToLatest = () => {
+		const element = scrollRef.current;
+		if (!element) return;
+		element.scrollTop = element.scrollHeight;
+		setFollow(true);
+	};
+
 	return (
-		<div className="chatterbox-messages">
+		<div className="chatterbox-message-area">
+			<div
+				className="chatterbox-messages"
+				ref={scrollRef}
+				onScroll={onScroll}
+			>
 			{messages.map((message) => (
 				<div
 					key={message.id}
@@ -123,7 +171,13 @@ export function MessageList({
 					)}
 				</div>
 			))}
-			<div ref={bottomRef} />
+			</div>
+
+			{!following && (
+				<button className="chatterbox-jump" onClick={jumpToLatest}>
+					Jump to latest
+				</button>
+			)}
 		</div>
 	);
 }
