@@ -72,7 +72,7 @@ export function Composer({
 			<textarea
 				ref={textareaRef}
 				className="chatterbox-input"
-				rows={3}
+				rows={9}
 				value={text}
 				placeholder={
 					disabled
