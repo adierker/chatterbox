@@ -324,6 +324,7 @@
 
 .chatterbox-message-actions {
 	display: flex;
+	justify-content: flex-end;
 	gap: var(--size-4-1);
 	margin-top: var(--size-4-1);
 	opacity: 0;
@@ -524,7 +525,110 @@
 	padding: var(--size-4-2);
 }
 
+/*
+ * Obsidian fades the bottom of a leaf with a white-to-transparent gradient on
+ * .workspace-leaf-content::after. That is right for a scrolling document, but
+ * this panel ends in a composer and a Send button, and the fade washes them
+ * out from the bottom up. Scoped by view type so only this plugin's leaf loses
+ * it.
+ */
+.workspace-leaf-content[data-type='chatterbox-panel']::after {
+	display: none;
+}
+
 .chatterbox-send:disabled {
 	opacity: 0.5;
 	cursor: default;
+}
+
+/*
+ * Obsidian gives the drawer the full screen only on a phone
+ * (--mobile-sidebar-width: 100vw under .is-phone). On a tablet it is narrower,
+ * leaving a rail of the main view visible beside the panel. :has() scopes this
+ * to a drawer containing this plugin's leaf.
+ */
+.is-mobile
+	.workspace-drawer:has(.workspace-leaf-content[data-type='chatterbox-panel']) {
+	--mobile-sidebar-width: 100vw;
+	--mobile-sidebar-width-pinned: 100vw;
+	max-width: 100vw;
+}
+
+/*
+ * The tab switcher is .workspace-drawer-tab-options, a flex child of
+ * .workspace-drawer-active-tab-container (display: flex; flex-direction:
+ * column). Order lifts it above the panel rather than hiding it — it is how
+ * you reach the other sidebar tabs.
+ */
+.is-mobile
+	.workspace-drawer:has(.workspace-leaf-content[data-type='chatterbox-panel'])
+	.workspace-drawer-active-tab-container
+	> .workspace-drawer-tab-options {
+	order: -1;
+}
+
+/*
+ * .workspace-drawer-header is the row naming the active note with its word
+ * count and sync state. Named "header" but rendered at the bottom of
+ * .workspace-drawer-inner. It reports on a note that is not visible during a
+ * sidebar-only mobile session.
+ */
+.is-mobile
+	.workspace-drawer:has(.workspace-leaf-content[data-type='chatterbox-panel'])
+	> .workspace-drawer-inner
+	> .workspace-drawer-header {
+	display: none;
+}
+
+/* The drawer reserves space at the bottom for the header row hidden above. */
+.is-mobile
+	.workspace-drawer:has(.workspace-leaf-content[data-type='chatterbox-panel'])
+	> .workspace-drawer-inner {
+	padding-bottom: 0;
+}
+
+/*
+ * With the switcher moved to the top, its options list still opens upward and
+ * off-screen. DOM order is already select-bar-then-list, so it is being lifted
+ * either by absolute positioning against the bottom or by flex order. Both are
+ * corrected here; whichever does not apply is inert (top/bottom do nothing on a
+ * static element, order does nothing on an absolutely positioned one).
+ */
+.is-mobile
+	.workspace-drawer:has(.workspace-leaf-content[data-type='chatterbox-panel'])
+	.workspace-drawer-tab-options-list {
+	top: 100%;
+	bottom: auto;
+	order: 1;
+}
+
+/*
+ * Mobile buttons get generous padding for touch, and icons default to
+ * --icon-m. That is right for primary controls and too heavy for these inline
+ * ones, which sit inside every message.
+ */
+.is-mobile .chatterbox-message-actions button {
+	padding: var(--size-2-2) var(--size-4-1);
+	--icon-size: var(--icon-s);
+	--icon-stroke: var(--icon-s-stroke-width);
+}
+
+/*
+ * The tab switcher is sized for a full-height sidebar. Shrunk here: padding on
+ * both the header and its inner wrapper, since either can carry it, plus the
+ * icon and label.
+ */
+.is-mobile
+	.workspace-drawer:has(.workspace-leaf-content[data-type='chatterbox-panel'])
+	.workspace-drawer-tab-select,
+.is-mobile
+	.workspace-drawer:has(.workspace-leaf-content[data-type='chatterbox-panel'])
+	.workspace-drawer-tab-select
+	.workspace-tab-header-inner {
+	padding: var(--size-4-1) var(--size-4-2);
+	min-height: 0;
+	height: auto;
+	font-size: var(--font-ui-small);
+	--icon-size: var(--icon-s);
+	--icon-stroke: var(--icon-s-stroke-width);
 }
