@@ -5,7 +5,15 @@
 	gap: var(--size-4-2);
 }
 
+/*
+ * Obsidian sets user-select: none on the app chrome and re-enables it on its
+ * own content surfaces. A custom view's content inherits the "none", so the
+ * conversation has to opt back in explicitly or none of it can be selected.
+ */
 .chatterbox-messages {
+	user-select: text;
+	-webkit-user-select: text;
+	cursor: auto;
 	flex: 1;
 	overflow-y: auto;
 	display: flex;
@@ -449,4 +457,17 @@
 	background: none;
 	box-shadow: none;
 	cursor: pointer;
+}
+
+/* Message text reads as selectable; the hover controls do not. */
+.chatterbox-plain,
+.chatterbox-markdown {
+	cursor: text;
+}
+
+.chatterbox-message-actions,
+.chatterbox-message-model {
+	user-select: none;
+	-webkit-user-select: none;
+	cursor: default;
 }
