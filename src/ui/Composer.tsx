@@ -28,6 +28,8 @@ export function Composer({
 	const [text, setText] = useState('');
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+	const canSend = !disabled && text.trim() !== '';
+
 	const submit = () => {
 		if (disabled || text.trim() === '') return;
 		onSend(text);
@@ -93,8 +95,11 @@ export function Composer({
 				</button>
 			) : (
 				<button
-					className="chatterbox-send mod-cta"
-					disabled={disabled || text.trim() === ''}
+					// mod-cta paints the accent regardless of state, so a
+					// disabled Send looks exactly like a live one. Carry it
+					// only when the button can actually do something.
+					className={`chatterbox-send${canSend ? ' mod-cta' : ''}`}
+					disabled={!canSend}
 					onClick={submit}
 				>
 					Send

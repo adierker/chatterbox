@@ -523,3 +523,8 @@
 	.view-content {
 	padding: var(--size-4-2);
 }
+
+.chatterbox-send:disabled {
+	opacity: 0.5;
+	cursor: default;
+}
