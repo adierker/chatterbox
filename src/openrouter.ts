@@ -1,4 +1,5 @@
 import { ChatMessage, ChatParameters } from './types';
+import { ProviderRouting } from './providers';
 
 export const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
 
@@ -13,6 +14,8 @@ export interface CompletionRequest {
 	/** System prompt plus expanded context, or null to send neither. */
 	system?: string | null;
 	parameters?: ChatParameters;
+	/** Restricts which upstream providers may serve this request. */
+	provider?: ProviderRouting | null;
 	signal?: AbortSignal;
 }
 
@@ -36,6 +39,8 @@ export function buildRequestBody(
 		],
 		stream: true,
 	};
+
+	if (request.provider) body['provider'] = request.provider;
 
 	const parameters = request.parameters ?? {};
 

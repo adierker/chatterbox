@@ -5,6 +5,21 @@ import { buildRequestBody, extractDelta, parseSseBuffer } from './openrouter';
 describe('buildRequestBody', () => {
 	const base = { model: 'z-ai/glm-5.2', messages: [] };
 
+	it('omits provider routing when the model is not pinned', () => {
+		assert.equal('provider' in buildRequestBody(base), false);
+	});
+
+	it('sends the pin, with fallbacks disabled', () => {
+		const body = buildRequestBody({
+			...base,
+			provider: { only: ['moonshotai'], allow_fallbacks: false },
+		});
+		assert.deepEqual(body['provider'], {
+			only: ['moonshotai'],
+			allow_fallbacks: false,
+		});
+	});
+
 	it('always streams', () => {
 		assert.equal(buildRequestBody(base)['stream'], true);
 	});

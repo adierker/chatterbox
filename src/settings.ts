@@ -2,6 +2,11 @@ import { App, Notice, PluginSettingTab, Setting, normalizePath } from 'obsidian'
 import type ChatterboxPlugin from './main';
 import { ChatParameters, ReasoningEffort } from './types';
 import {
+	ProviderPins,
+	parseProviderPins,
+	serializeProviderPins,
+} from './providers';
+import {
 	ALL_EFFORTS,
 	EffortOptions,
 	parseEffortOptions,
@@ -32,6 +37,8 @@ export interface ChatterboxSettings {
 	defaultParameters: ChatParameters;
 	/** Which reasoning efforts each model accepts. Not published by OpenRouter. */
 	effortOptions: EffortOptions;
+	/** Which upstream providers may serve each model. Empty means no constraint. */
+	providerPins: ProviderPins;
 }
 
 export const DEFAULT_SETTINGS: ChatterboxSettings = {
@@ -52,6 +59,8 @@ export const DEFAULT_SETTINGS: ChatterboxSettings = {
 		'z-ai/glm-5.2': ['high', 'xhigh'],
 		'moonshotai/kimi-k3': ['low', 'high', 'max'],
 	},
+	// Kimi is served by fifteen providers, so it rarely lands on a warm cache.
+	providerPins: { 'moonshotai/kimi-k3': ['moonshotai'] },
 };
 
 const SECRET_ID = 'chatterbox-openrouter-key';
@@ -307,6 +316,22 @@ export class ChatterboxSettingTab extends PluginSettingTab {
 							value === 'mod-enter' ? 'mod-enter' : 'enter';
 						await this.plugin.saveSettings();
 					});
+			});
+
+		new Setting(containerEl)
+			.setName('Providers per model')
+			.setDesc(
+				'Prompt caches live with the provider, so a model served by many of them rarely reuses one. Pin with "model = provider" lines; pinned models never fall back, so an outage fails visibly. Unlisted models route normally.',
+			)
+			.addTextArea((area) => {
+				area.inputEl.rows = 3;
+				area.setValue(
+					serializeProviderPins(this.plugin.settings.providerPins),
+				).onChange(async (value) => {
+					this.plugin.settings.providerPins =
+						parseProviderPins(value);
+					await this.plugin.saveSettings();
+				});
 			});
 
 		new Setting(containerEl)

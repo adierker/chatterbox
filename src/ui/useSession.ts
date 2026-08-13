@@ -17,6 +17,7 @@ import {
 import { expandAttachments } from '../vault';
 import { streamCompletion } from '../openrouter';
 import { loadApiKey } from '../settings';
+import { providerRoutingFor } from '../providers';
 import { forkChat, loadChat, renameChat, saveChat } from '../chatFile';
 import { RewindMode, planRewind } from '../rewind';
 import { ConfirmModal } from '../confirmModal';
@@ -336,6 +337,10 @@ export function useSession(plugin: ChatterboxPlugin): Session {
 					messages: history,
 					system,
 					parameters: nextParameters,
+					provider: providerRoutingFor(
+						nextModel,
+						plugin.settings.providerPins,
+					),
 					signal: controller.signal,
 				})) {
 					update((previous) =>
