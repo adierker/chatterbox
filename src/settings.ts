@@ -147,6 +147,12 @@ export class ChatterboxSettingTab extends PluginSettingTab {
 		const { containerEl } = this;
 		containerEl.empty();
 
+		// Worth surfacing rather than making the user hunt through the
+		// community plugins list: installed versions can differ per device.
+		new Setting(containerEl)
+			.setName('Version')
+			.setDesc(this.plugin.manifest.version);
+
 		const usingSecretStorage = secretStore(this.app) !== undefined;
 
 		new Setting(containerEl)
