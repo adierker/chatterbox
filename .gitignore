@@ -24,3 +24,6 @@ data.json
 # Agent-facing design notes. Local only, never published.
 CLAUDE.md
 docs/
+
+# Marks this folder for the Hot Reload plugin during local development.
+.hotreload
