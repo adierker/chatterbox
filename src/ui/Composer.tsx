@@ -1,4 +1,5 @@
 import { ChangeEvent, KeyboardEvent, useRef, useState } from 'react';
+import { Platform } from 'obsidian';
 
 interface ComposerProps {
 	onSend: (text: string) => void;
@@ -72,7 +73,9 @@ export function Composer({
 			<textarea
 				ref={textareaRef}
 				className="chatterbox-input"
-				rows={9}
+				// A tall composer is comfortable on desktop and swallows the
+				// conversation on a phone, where the panel is far shorter.
+				rows={Platform.isMobile ? 3 : 9}
 				value={text}
 				placeholder={
 					disabled

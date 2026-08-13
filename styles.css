@@ -495,3 +495,31 @@
 	box-shadow: var(--shadow-s);
 	cursor: pointer;
 }
+
+/* Obsidian's own chrome eats more of the screen on a phone, so the panel
+   gives back what spacing it can. */
+.is-mobile .chatterbox-panel {
+	gap: var(--size-4-1);
+}
+
+.is-mobile .chatterbox-composer {
+	gap: var(--size-4-1);
+}
+
+.is-mobile .chatterbox-messages {
+	gap: var(--size-4-2);
+}
+
+/* No hover on a touch screen, so the edit and regenerate controls would
+   otherwise be permanently invisible there. */
+.is-mobile .chatterbox-message-actions {
+	opacity: 1;
+}
+
+/* Obsidian pads a view's content generously on mobile. Scoped by view type so
+   this only ever affects this plugin's own leaf. */
+.is-mobile
+	.workspace-leaf-content[data-type='chatterbox-panel']
+	.view-content {
+	padding: var(--size-4-2);
+}
