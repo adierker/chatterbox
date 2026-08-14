@@ -1,5 +1,5 @@
 import { DragEvent, useCallback, useEffect, useState } from 'react';
-import { Notice, TFile } from 'obsidian';
+import { Notice, Platform, TFile } from 'obsidian';
 import type ChatterboxPlugin from '../main';
 import type { ChatterboxView } from '../view';
 import { FilePickerModal } from '../filePicker';
@@ -7,6 +7,7 @@ import { HistoryModal } from '../historyModal';
 import { resolveDrop } from '../vault';
 import { useSession } from './useSession';
 import { ControlBar, Drawer } from './ControlBar';
+import { Icon } from './Icon';
 import { MessageList } from './MessageList';
 import { Composer } from './Composer';
 
@@ -20,6 +21,7 @@ export function ChatPanel({ plugin, view }: ChatPanelProps) {
 	const { context } = session;
 	const [dragging, setDragging] = useState(false);
 	const [drawer, setDrawer] = useState<Drawer>(null);
+	const inWindow = plugin.panelPlacement() === 'window';
 	const [editingId, setEditingId] = useState<string | null>(null);
 	const streaming = session.streamingId !== null;
 
@@ -140,11 +142,13 @@ export function ChatPanel({ plugin, view }: ChatPanelProps) {
 			}}
 			onDrop={onDrop}
 		>
-			{session.file && (
-				<div className="chatterbox-active-file">
-					<span title={session.file.path}>
-						{session.file.basename}
-					</span>
+			<div className="chatterbox-active-file">
+				<span className="chatterbox-active-file-name">
+					{session.file && (
+						<span title={session.file.path}>
+							{session.file.basename}
+						</span>
+					)}
 					{session.parentPath !== null && (
 						<>
 							{' · '}
@@ -164,8 +168,25 @@ export function ChatPanel({ plugin, view }: ChatPanelProps) {
 							</a>
 						</>
 					)}
-				</div>
-			)}
+				</span>
+
+				{/* Separate windows do not exist on mobile. */}
+				{!Platform.isMobile && (
+					<button
+						className="chatterbox-placement"
+						aria-label={inWindow ? 'Move back to the sidebar' : 'Open in a separate window'}
+						title={inWindow ? 'Move back to the sidebar' : 'Open in a separate window'}
+						onClick={() => {
+							void plugin.openPanel(inWindow ? 'sidebar' : 'window');
+						}}
+					>
+						<Icon
+							name={inWindow ? 'panel-right' : 'external-link'}
+							fallback={inWindow ? '⇤' : '⇗'}
+						/>
+					</button>
+				)}
+			</div>
 
 			{session.lastError !== null && (
 				<div className="chatterbox-error" role="alert">

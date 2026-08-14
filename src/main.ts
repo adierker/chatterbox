@@ -121,6 +121,13 @@ export default class ChatterboxPlugin extends Plugin {
 		return 'window';
 	}
 
+	/** Where the open panel currently is, or null if it is not open. */
+	panelPlacement(): PanelPlacement | null {
+		const leaf =
+			this.app.workspace.getLeavesOfType(CHATTERBOX_VIEW_TYPE)[0] ?? null;
+		return leaf ? this.placementOf(leaf) : null;
+	}
+
 	/**
 	 * Opens the chat, or moves it if it is already open somewhere else. Only
 	 * ever one panel exists: a second would be a second conversation writing to

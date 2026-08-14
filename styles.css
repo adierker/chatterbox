@@ -66,12 +66,37 @@
 }
 
 .chatterbox-active-file {
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-2);
 	font-size: var(--font-ui-smaller);
 	color: var(--text-faint);
+	flex-shrink: 0;
+}
+
+/* The name yields space; the button keeps its size. */
+.chatterbox-active-file-name {
+	flex: 1;
+	min-width: 0;
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
+}
+
+.chatterbox-placement {
 	flex-shrink: 0;
+	padding: var(--size-2-2) var(--size-4-1);
+	background: none;
+	box-shadow: none;
+	color: var(--text-faint);
+	cursor: pointer;
+	--icon-size: var(--icon-s);
+	--icon-stroke: var(--icon-s-stroke-width);
+}
+
+.chatterbox-placement:hover {
+	color: var(--text-normal);
+	background-color: var(--background-modifier-hover);
 }
 
 .chatterbox-history-search {
