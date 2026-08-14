@@ -13,6 +13,9 @@ import { HistoryModal } from './historyModal';
 import { PromptModal } from './promptModal';
 import { UNTITLED, sanitizeTitle } from './titles';
 
+/** Sidebar, a tab in the main area, or its own OS window. */
+export type PanelPlacement = 'sidebar' | 'tab' | 'window';
+
 const TITLE_INSTRUCTION =
 	'Reply with a short title for this conversation: at most six words, no quotes, no trailing punctuation. Reply with the title alone.';
 
@@ -36,6 +39,22 @@ export default class ChatterboxPlugin extends Plugin {
 			name: 'Open panel',
 			callback: () => {
 				void this.openPanel();
+			},
+		});
+
+		this.addCommand({
+			id: 'open-in-tab',
+			name: 'Open in the main area',
+			callback: () => {
+				void this.openPanel('tab');
+			},
+		});
+
+		this.addCommand({
+			id: 'open-in-window',
+			name: 'Open in a separate window',
+			callback: () => {
+				void this.openPanel('window');
 			},
 		});
 
@@ -92,27 +111,44 @@ export default class ChatterboxPlugin extends Plugin {
 		this.addSettingTab(new ChatterboxSettingTab(this.app, this));
 	}
 
-	/**
-	 * Opens the chat in the right side panel, reusing the existing leaf if one
-	 * is already open. Side panel only — see SPEC §2.
-	 */
-	async openPanel(): Promise<void> {
-		const { workspace } = this.app;
+	/** Where the panel lives. Sidebar is the default (SPEC §4.1). */
+	private placementOf(leaf: WorkspaceLeaf): PanelPlacement {
+		const root = leaf.getRoot();
+		const { leftSplit, rightSplit, rootSplit } = this.app.workspace;
 
-		let leaf: WorkspaceLeaf | null =
+		if (root === leftSplit || root === rightSplit) return 'sidebar';
+		if (root === rootSplit) return 'tab';
+		return 'window';
+	}
+
+	/**
+	 * Opens the chat, or moves it if it is already open somewhere else. Only
+	 * ever one panel exists: a second would be a second conversation writing to
+	 * the same active-chat pointer and the same folder.
+	 *
+	 * Moving detaches and recreates, so the view remounts. The conversation
+	 * comes back because it is a file and the active chat is restored on mount;
+	 * an unsaved draft in the composer does not.
+	 */
+	async openPanel(placement: PanelPlacement = 'sidebar'): Promise<void> {
+		const { workspace } = this.app;
+		const existing =
 			workspace.getLeavesOfType(CHATTERBOX_VIEW_TYPE)[0] ?? null;
 
-		if (!leaf) {
-			leaf = workspace.getRightLeaf(false);
-			await leaf?.setViewState({
-				type: CHATTERBOX_VIEW_TYPE,
-				active: true,
-			});
+		if (existing && this.placementOf(existing) === placement) {
+			await workspace.revealLeaf(existing);
+			return;
 		}
 
-		if (leaf) {
-			await workspace.revealLeaf(leaf);
-		}
+		existing?.detach();
+
+		const leaf: WorkspaceLeaf | null =
+			placement === 'sidebar'
+				? workspace.getRightLeaf(false)
+				: workspace.getLeaf(placement === 'window' ? 'window' : 'tab');
+
+		await leaf?.setViewState({ type: CHATTERBOX_VIEW_TYPE, active: true });
+		if (leaf) await workspace.revealLeaf(leaf);
 	}
 
 	/**
