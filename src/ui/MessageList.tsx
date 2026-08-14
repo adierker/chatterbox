@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { Notice } from 'obsidian';
 import type ChatterboxPlugin from '../main';
 import { ChatMessage, ChatParameters } from '../types';
 import { MarkdownContent } from './MarkdownContent';
@@ -139,6 +140,7 @@ export function MessageList({
 							/>
 							{message.id !== streamingId && (
 								<div className="chatterbox-message-actions">
+									<CopyButton text={message.content} />
 									<button
 										aria-label="Edit this message"
 										title="Edit"
@@ -179,6 +181,49 @@ export function MessageList({
 				</button>
 			)}
 		</div>
+	);
+}
+
+/**
+ * Copies a message's text. Confirms by swapping to a tick rather than firing a
+ * Notice, which would be heavy for something done repeatedly.
+ */
+function CopyButton({ text }: { text: string }) {
+	const [copied, setCopied] = useState(false);
+	const timer = useRef<number | null>(null);
+
+	useEffect(() => {
+		return () => {
+			if (timer.current !== null) window.clearTimeout(timer.current);
+		};
+	}, []);
+
+	const copy = () => {
+		navigator.clipboard.writeText(text).then(
+			() => {
+				setCopied(true);
+				if (timer.current !== null) window.clearTimeout(timer.current);
+				timer.current = window.setTimeout(() => {
+					setCopied(false);
+				}, 1500);
+			},
+			() => {
+				new Notice('Chatterbox: could not write to the clipboard.');
+			},
+		);
+	};
+
+	return (
+		<button
+			aria-label="Copy this message"
+			title={copied ? 'Copied' : 'Copy'}
+			onClick={copy}
+		>
+			<Icon
+				name={copied ? 'check' : 'copy'}
+				fallback={copied ? '✓' : '⧉'}
+			/>
+		</button>
 	);
 }
 
