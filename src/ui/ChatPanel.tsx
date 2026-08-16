@@ -4,6 +4,7 @@ import type ChatterboxPlugin from '../main';
 import type { ChatterboxView } from '../view';
 import { FilePickerModal } from '../filePicker';
 import { HistoryModal } from '../historyModal';
+import { renameChat } from '../chatFile';
 import { resolveDrop } from '../vault';
 import { useSession } from './useSession';
 import { ControlBar, Drawer } from './ControlBar';
@@ -63,6 +64,28 @@ export function ChatPanel({ plugin, view }: ChatPanelProps) {
 					.find((message) => message.role === 'assistant');
 				if (!target || target.id === session.streamingId) return false;
 				session.rewind({ messageId: target.id, mode: 'regenerate' });
+				return true;
+			},
+			generateTitle: () => {
+				const file = session.file;
+				if (!file || session.messages.length === 0) return false;
+
+				void plugin
+					.generateTitle(session.messages)
+					.then(async (title) => {
+						if (title === null) {
+							new Notice(
+								'Chatterbox: the model did not return a usable title.',
+							);
+							return;
+						}
+						await renameChat(plugin.app, file, title);
+					})
+					.catch((error: unknown) => {
+						new Notice(
+							`Chatterbox: could not rename — ${error instanceof Error ? error.message : String(error)}`,
+						);
+					});
 				return true;
 			},
 			stop: () => {

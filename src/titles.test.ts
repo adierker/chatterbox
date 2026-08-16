@@ -2,9 +2,12 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
 	UNTITLED,
+	datePrefix,
 	deriveTitle,
+	existingDatePrefix,
 	forkTitle,
 	sanitizeTitle,
+	stripDatePrefix,
 	uniqueTitle,
 } from './titles';
 
@@ -61,7 +64,61 @@ describe('deriveTitle', () => {
 	});
 });
 
+describe('date prefixes', () => {
+	it('formats as YY-MM-DD with a trailing space', () => {
+		assert.equal(datePrefix(new Date(2026, 7, 16)), '26-08-16 ');
+	});
+
+	it('pads single-digit months and days', () => {
+		assert.equal(datePrefix(new Date(2026, 0, 5)), '26-01-05 ');
+	});
+
+	it('sorts chronologically as plain text', () => {
+		const dates = [
+			datePrefix(new Date(2026, 11, 1)),
+			datePrefix(new Date(2026, 0, 5)),
+			datePrefix(new Date(2025, 5, 9)),
+		];
+		assert.deepEqual([...dates].sort(), [
+			'25-06-09 ',
+			'26-01-05 ',
+			'26-12-01 ',
+		]);
+	});
+
+	it('strips a prefix, leaving an unprefixed title alone', () => {
+		assert.equal(stripDatePrefix('26-08-16 Pacing'), 'Pacing');
+		assert.equal(stripDatePrefix('Pacing'), 'Pacing');
+	});
+
+	it('does not mistake a date inside the title for a prefix', () => {
+		assert.equal(
+			stripDatePrefix('Notes on 26-08-16 timeline'),
+			'Notes on 26-08-16 timeline',
+		);
+	});
+
+	it('reports the prefix a file already carries', () => {
+		assert.equal(existingDatePrefix('26-08-16 Pacing'), '26-08-16 ');
+		assert.equal(existingDatePrefix('Pacing'), '');
+	});
+});
+
 describe('forkTitle', () => {
+	it('dates a fork when it diverged, not when the parent started', () => {
+		assert.equal(
+			forkTitle('26-08-10 Pacing', new Set(), '26-08-16 '),
+			'26-08-16 Pacing (fork 2)',
+		);
+	});
+
+	it('increments the parent fork counter while re-dating', () => {
+		assert.equal(
+			forkTitle('26-08-10 Pacing (fork 2)', new Set(), '26-08-16 '),
+			'26-08-16 Pacing (fork 3)',
+		);
+	});
+
 	it('sorts a fork directly under its parent', () => {
 		assert.equal(forkTitle('Review', new Set()), 'Review (fork 2)');
 	});

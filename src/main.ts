@@ -83,6 +83,11 @@ export default class ChatterboxPlugin extends Plugin {
 			'Regenerate the last reply',
 			(actions) => actions.regenerateLastReply(),
 		);
+		this.addPanelCommand(
+			'generate-title',
+			'Generate a title for this chat',
+			(actions) => actions.generateTitle(),
+		);
 		this.addPanelCommand('new-chat', 'New chat', (actions) => {
 			actions.newChat();
 			return true;

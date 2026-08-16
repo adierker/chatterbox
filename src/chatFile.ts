@@ -1,7 +1,14 @@
 import { App, TFile, TFolder, normalizePath } from 'obsidian';
 import { Transcript } from './types';
 import { parseTranscript, serializeTranscript } from './transcript';
-import { deriveTitle, forkTitle, uniqueTitle } from './titles';
+import {
+	datePrefix,
+	deriveTitle,
+	existingDatePrefix,
+	forkTitle,
+	stripDatePrefix,
+	uniqueTitle,
+} from './titles';
 
 export interface ChatSummary {
 	file: TFile;
@@ -91,7 +98,10 @@ export async function saveChat(
 		(message) => message.role === 'user',
 	);
 	const taken = new Set(listChatFiles(app, folder).map((f) => f.basename));
-	const title = uniqueTitle(deriveTitle(firstUser?.content ?? ''), taken);
+	const title = uniqueTitle(
+		datePrefix() + deriveTitle(firstUser?.content ?? ''),
+		taken,
+	);
 
 	return app.vault.create(chatPath(folder, title), contents);
 }
@@ -114,7 +124,7 @@ export async function forkChat(
 	const taken = new Set(listChatFiles(app, folder).map((f) => f.basename));
 
 	return app.vault.create(
-		chatPath(folder, forkTitle(parent.basename, taken)),
+		chatPath(folder, forkTitle(parent.basename, taken, datePrefix())),
 		contents,
 	);
 }
@@ -135,8 +145,11 @@ export async function renameChat(
 			.map((other) => other.basename),
 	);
 	const folder = file.parent?.path ?? '';
+	// Renaming changes the name, not when the chat happened, so the file keeps
+	// the prefix it already had. One without a prefix gains today's.
+	const prefix = existingDatePrefix(file.basename) || datePrefix();
 	await app.fileManager.renameFile(
 		file,
-		chatPath(folder, uniqueTitle(title, taken)),
+		chatPath(folder, uniqueTitle(prefix + stripDatePrefix(title), taken)),
 	);
 }

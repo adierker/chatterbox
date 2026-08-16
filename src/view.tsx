@@ -12,6 +12,7 @@ export interface PanelActions {
 	openChat: (file: TFile) => void;
 	editLastMessage: () => boolean;
 	regenerateLastReply: () => boolean;
+	generateTitle: () => boolean;
 	stop: () => boolean;
 	newChat: () => void;
 }

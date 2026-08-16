@@ -35,6 +35,24 @@ export function deriveTitle(firstMessage: string): string {
 	return sanitizeTitle(lastSpace > 20 ? clipped.slice(0, lastSpace) : clipped);
 }
 
+/** YY-MM-DD, so the folder sorts chronologically rather than by whatever the
+ * first message happened to say. */
+const DATE_PREFIX = /^\d{2}-\d{2}-\d{2} /;
+
+export function datePrefix(date: Date = new Date()): string {
+	const pad = (value: number) => String(value).padStart(2, '0');
+	return `${pad(date.getFullYear() % 100)}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} `;
+}
+
+export function stripDatePrefix(title: string): string {
+	return title.replace(DATE_PREFIX, '');
+}
+
+/** The prefix a file already carries, or '' if it predates them. */
+export function existingDatePrefix(title: string): string {
+	return DATE_PREFIX.exec(title)?.[0] ?? '';
+}
+
 const FORK_SUFFIX = /^(.*) \(fork (\d+)\)$/;
 
 /**
@@ -46,13 +64,17 @@ const FORK_SUFFIX = /^(.*) \(fork (\d+)\)$/;
 export function forkTitle(
 	parentTitle: string,
 	taken: ReadonlySet<string>,
+	prefix = '',
 ): string {
-	const match = FORK_SUFFIX.exec(parentTitle);
-	const base = match?.[1] ?? parentTitle;
+	// The parent's date is dropped: a fork is dated when it diverged, not when
+	// the conversation it came from started.
+	const stem = stripDatePrefix(parentTitle);
+	const match = FORK_SUFFIX.exec(stem);
+	const base = match?.[1] ?? stem;
 	const start = match?.[2] === undefined ? 2 : Number(match[2]) + 1;
 
 	for (let counter = start; ; counter += 1) {
-		const candidate = `${base} (fork ${String(counter)})`;
+		const candidate = `${prefix}${base} (fork ${String(counter)})`;
 		if (!taken.has(candidate)) return candidate;
 	}
 }
