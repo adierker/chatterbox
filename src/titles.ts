@@ -37,20 +37,27 @@ export function deriveTitle(firstMessage: string): string {
 
 /** YY-MM-DD, so the folder sorts chronologically rather than by whatever the
  * first message happened to say. */
-const DATE_PREFIX = /^\d{2}-\d{2}-\d{2} /;
+// The separator is optional when matching so files written before it was
+// added still strip and re-prefix correctly rather than doubling up.
+const DATE_PREFIX = /^(\d{2})-(\d{2})-(\d{2}) (?:- )?/;
 
 export function datePrefix(date: Date = new Date()): string {
 	const pad = (value: number) => String(value).padStart(2, '0');
-	return `${pad(date.getFullYear() % 100)}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} `;
+	const stamp = `${pad(date.getFullYear() % 100)}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+	return `${stamp} - `;
 }
 
 export function stripDatePrefix(title: string): string {
 	return title.replace(DATE_PREFIX, '');
 }
 
-/** The prefix a file already carries, or '' if it predates them. */
+/**
+ * The prefix a file already carries, re-rendered in the current format, or ''
+ * if it has none. Keeps the original date while normalising the separator.
+ */
 export function existingDatePrefix(title: string): string {
-	return DATE_PREFIX.exec(title)?.[0] ?? '';
+	const match = DATE_PREFIX.exec(title);
+	return match ? `${match[1]}-${match[2]}-${match[3]} - ` : '';
 }
 
 const FORK_SUFFIX = /^(.*) \(fork (\d+)\)$/;
