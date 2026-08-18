@@ -255,9 +255,9 @@ export default class ChatterboxPlugin extends Plugin {
 		if (apiKey === '') return null;
 
 		// The conversation keeps its real turns, and the instruction arrives as
-		// the last user message. Flattening it all into one user turn instead
-		// reads as a request to write the prose rather than to label it, which
-		// draws refusals on material the conversation itself produced happily.
+		// the last user message. Flattened into a single user turn instead, the
+		// request reads as a prompt to write the text rather than to label it,
+		// and the reply comes back as prose instead of a title.
 		const request: ChatMessage[] = [
 			...messages.map((message) => ({
 				...message,
