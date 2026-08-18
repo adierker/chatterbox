@@ -71,6 +71,15 @@ export class ChatterboxView extends ItemView {
 	}
 
 	protected onOpen(): Promise<void> {
+		// On mobile the sidebar drawer closes on a horizontal swipe, which
+		// takes over any touch that begins in the panel and so makes text
+		// impossible to select. Obsidian's own opt-out: its touchstart handler
+		// walks up from the touched element and abandons the gesture on the
+		// first ancestor carrying this attribute. The markdown editor sets it
+		// for exactly this reason, which is why notes are selectable and this
+		// panel was not.
+		this.contentEl.dataset.ignoreSwipe = 'true';
+
 		this.root = createRoot(this.contentEl);
 		this.root.render(
 			<StrictMode>
