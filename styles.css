@@ -613,6 +613,27 @@
 }
 
 /*
+ * Obsidian shrinks the app for the on-screen keyboard with
+ * `body.is-mobile .app-container { max-height: calc(100vh - var(--keyboard-height)) }`,
+ * but the drawer is `position: fixed; top: 0; bottom: 0`, so it is measured
+ * against the viewport instead and keeps its full height. The composer sits at
+ * the bottom of that height, underneath the keyboard. Lifting the drawer's
+ * bottom edge by the same variable puts it back on screen.
+ *
+ * --keyboard-height is Obsidian's own, declared `0px` on :root and written by
+ * the mobile shell, so this collapses to `bottom: 0` whenever the keyboard is
+ * down and on desktop, where the variable is never anything else. Pinned
+ * drawers are excluded: pinning is a tablet layout where the drawer is
+ * position: relative, and `bottom` would shift it rather than resize it.
+ */
+.is-mobile
+	.workspace-drawer:not(.is-pinned):has(
+		.workspace-leaf-content[data-type='chatterbox-panel']
+	) {
+	bottom: var(--keyboard-height, 0px);
+}
+
+/*
  * With the switcher moved to the top, its options list still opens upward and
  * off-screen. DOM order is already select-bar-then-list, so it is being lifted
  * either by absolute positioning against the bottom or by flex order. Both are
