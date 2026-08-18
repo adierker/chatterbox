@@ -17,7 +17,10 @@ import { UNTITLED, sanitizeTitle } from './titles';
 export type PanelPlacement = 'sidebar' | 'tab' | 'window';
 
 const TITLE_INSTRUCTION =
-	'Reply with a short title for this conversation: at most six words, no quotes, no trailing punctuation. Reply with the title alone.';
+	'Give this conversation a short title: at most six words, no quotes, no trailing punctuation. Reply with the title alone.';
+
+/** Per message, so one long reply cannot crowd out the opening prompt. */
+const TITLE_EXCERPT_LIMIT = 2000;
 
 export default class ChatterboxPlugin extends Plugin {
 	settings: ChatterboxSettings = DEFAULT_SETTINGS;
@@ -251,13 +254,16 @@ export default class ChatterboxPlugin extends Plugin {
 		const apiKey = loadApiKey(this.app, this.settings);
 		if (apiKey === '') return null;
 
-		const transcript = messages
-			.map((message) => `${message.role}: ${message.content}`)
-			.join('\n\n')
-			.slice(0, 4000);
-
+		// The conversation keeps its real turns, and the instruction arrives as
+		// the last user message. Flattening it all into one user turn instead
+		// reads as a request to write the prose rather than to label it, which
+		// draws refusals on material the conversation itself produced happily.
 		const request: ChatMessage[] = [
-			{ id: 'title', role: 'user', content: transcript },
+			...messages.map((message) => ({
+				...message,
+				content: message.content.slice(0, TITLE_EXCERPT_LIMIT),
+			})),
+			{ id: 'title', role: 'user', content: TITLE_INSTRUCTION },
 		];
 
 		let title = '';
@@ -265,7 +271,7 @@ export default class ChatterboxPlugin extends Plugin {
 			apiKey,
 			model: this.defaultModel(),
 			messages: request,
-			system: TITLE_INSTRUCTION,
+			system: null,
 		})) {
 			title += delta;
 		}
