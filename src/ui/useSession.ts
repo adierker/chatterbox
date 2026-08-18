@@ -340,6 +340,7 @@ export function useSession(plugin: ChatterboxPlugin): Session {
 					provider: providerRoutingFor(
 						nextModel,
 						plugin.settings.providerPins,
+						plugin.settings.providerBlocks,
 					),
 					signal: controller.signal,
 				})) {

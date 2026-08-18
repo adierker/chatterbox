@@ -39,6 +39,8 @@ export interface ChatterboxSettings {
 	effortOptions: EffortOptions;
 	/** Which upstream providers may serve each model. Empty means no constraint. */
 	providerPins: ProviderPins;
+	/** Providers to refuse. Use `*` as the model to block one everywhere. */
+	providerBlocks: ProviderPins;
 }
 
 export const DEFAULT_SETTINGS: ChatterboxSettings = {
@@ -61,6 +63,8 @@ export const DEFAULT_SETTINGS: ChatterboxSettings = {
 	},
 	// Kimi is served by fifteen providers, so it rarely lands on a warm cache.
 	providerPins: { 'moonshotai/kimi-k3': ['moonshotai'] },
+	// Alibaba applies its own content filtering, which alters replies.
+	providerBlocks: { '*': ['alibaba'] },
 };
 
 const SECRET_ID = 'chatterbox-openrouter-key';
@@ -329,6 +333,22 @@ export class ChatterboxSettingTab extends PluginSettingTab {
 					serializeProviderPins(this.plugin.settings.providerPins),
 				).onChange(async (value) => {
 					this.plugin.settings.providerPins =
+						parseProviderPins(value);
+					await this.plugin.saveSettings();
+				});
+			});
+
+		new Setting(containerEl)
+			.setName('Blocked providers')
+			.setDesc(
+				'Providers to refuse, as "model = provider" lines. Use * as the model to block one for every model — useful when a provider filters or rewrites output. Blocking still allows fallback to any other provider.',
+			)
+			.addTextArea((area) => {
+				area.inputEl.rows = 3;
+				area.setValue(
+					serializeProviderPins(this.plugin.settings.providerBlocks),
+				).onChange(async (value) => {
+					this.plugin.settings.providerBlocks =
 						parseProviderPins(value);
 					await this.plugin.saveSettings();
 				});

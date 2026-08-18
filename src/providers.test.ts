@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
+	ALL_MODELS,
 	ProviderPins,
 	parseProviderPins,
 	providerRoutingFor,
@@ -50,7 +51,53 @@ describe('providerRoutingFor', () => {
 
 	it('does not hand out the array stored in settings', () => {
 		const routing = providerRoutingFor('moonshotai/kimi-k3', PINS);
-		routing?.only.push('fireworks');
+		routing?.only?.push('fireworks');
 		assert.deepEqual(PINS['moonshotai/kimi-k3'], ['moonshotai']);
+	});
+});
+
+describe('blocked providers', () => {
+	const BLOCKS: ProviderPins = { [ALL_MODELS]: ['alibaba'] };
+
+	it('ignores a provider for every model when blocked with *', () => {
+		assert.deepEqual(providerRoutingFor('z-ai/glm-5.2', {}, BLOCKS), {
+			ignore: ['alibaba'],
+		});
+	});
+
+	it('leaves fallbacks alone, unlike a pin', () => {
+		// A block wants free routing among everything that is left.
+		const routing = providerRoutingFor('z-ai/glm-5.2', {}, BLOCKS);
+		assert.equal('allow_fallbacks' in (routing ?? {}), false);
+	});
+
+	it('blocks per model as well as globally', () => {
+		assert.deepEqual(
+			providerRoutingFor('a/b', {}, { 'a/b': ['fireworks'] }),
+			{ ignore: ['fireworks'] },
+		);
+	});
+
+	it('merges a global block with a per-model one, without duplicates', () => {
+		const routing = providerRoutingFor('a/b', {}, {
+			[ALL_MODELS]: ['alibaba'],
+			'a/b': ['alibaba', 'together'],
+		});
+		assert.deepEqual(routing, { ignore: ['alibaba', 'together'] });
+	});
+
+	it('combines a pin and a block on the same model', () => {
+		assert.deepEqual(
+			providerRoutingFor('a/b', { 'a/b': ['moonshotai'] }, BLOCKS),
+			{
+				only: ['moonshotai'],
+				allow_fallbacks: false,
+				ignore: ['alibaba'],
+			},
+		);
+	});
+
+	it('stays null when a model is neither pinned nor blocked', () => {
+		assert.equal(providerRoutingFor('other/model', {}, {}), null);
 	});
 });

@@ -13,14 +13,20 @@
 export type ProviderPins = Record<string, string[]>;
 
 export interface ProviderRouting {
-	only: string[];
+	only?: string[];
+	ignore?: string[];
 	/**
-	 * Deliberately false. A pinned provider that is down fails loudly with
-	 * OpenRouter's own error rather than silently routing to a cold,
-	 * differently-priced provider in the middle of a conversation.
+	 * Set false only alongside `only`. A pinned provider that is down fails
+	 * loudly with OpenRouter's own error rather than silently routing to a
+	 * cold, differently-priced provider mid-conversation. A blocklist does the
+	 * opposite — it wants free routing among everything that is left — so it
+	 * leaves fallbacks alone.
 	 */
-	allow_fallbacks: boolean;
+	allow_fallbacks?: boolean;
 }
+
+/** Key meaning "every model" in a blocklist. */
+export const ALL_MODELS = '*';
 
 /** Settings format: one `model = provider, provider` line per model. */
 export function parseProviderPins(text: string): ProviderPins {
@@ -51,13 +57,26 @@ export function serializeProviderPins(pins: ProviderPins): string {
 		.join('\n');
 }
 
-/** Null for an unpinned model, so the field is omitted from the request. */
+/**
+ * Null when a model is neither pinned nor has anything blocked, so the field is
+ * omitted entirely. Blocks accept `*` for providers to avoid everywhere —
+ * a provider that filters or rewrites output is objectionable whichever model
+ * it happens to be serving.
+ */
 export function providerRoutingFor(
 	model: string,
 	pins: ProviderPins,
+	blocks: ProviderPins = {},
 ): ProviderRouting | null {
-	const only = pins[model];
-	if (only === undefined || only.length === 0) return null;
+	const only = pins[model] ?? [];
+	const ignore = [
+		...new Set([...(blocks[ALL_MODELS] ?? []), ...(blocks[model] ?? [])]),
+	];
 
-	return { only: [...only], allow_fallbacks: false };
+	if (only.length === 0 && ignore.length === 0) return null;
+
+	return {
+		...(only.length > 0 ? { only: [...only], allow_fallbacks: false } : {}),
+		...(ignore.length > 0 ? { ignore } : {}),
+	};
 }
