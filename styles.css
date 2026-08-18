@@ -590,6 +590,35 @@
 	.workspace-drawer-active-tab-container
 	> .workspace-drawer-tab-options {
 	order: -1;
+	/* Obsidian stacks this column, which is right when the tab select is its
+	   only laid-out child. The close button sits beside it instead. The
+	   options list is position: absolute, so it ignores the direction. */
+	flex-direction: row;
+	align-items: center;
+	gap: var(--size-4-2);
+}
+
+/*
+ * The button is injected into Obsidian's chrome, which outlives this view, so
+ * it is hidden unless the drawer really is showing this panel. Belt and braces
+ * against a stale node: the view removes it on close.
+ */
+.chatterbox-drawer-close {
+	display: none;
+	flex: 0 0 auto;
+}
+
+.is-mobile
+	.workspace-drawer:has(.workspace-leaf-content[data-type='chatterbox-panel'])
+	.chatterbox-drawer-close {
+	display: flex;
+}
+
+/* Without this the select collapses to its content once it is in a row. */
+.is-mobile
+	.workspace-drawer:has(.workspace-leaf-content[data-type='chatterbox-panel'])
+	.workspace-drawer-tab-select {
+	flex: 1 1 auto;
 }
 
 /*

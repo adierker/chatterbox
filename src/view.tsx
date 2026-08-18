@@ -1,4 +1,4 @@
-import { ItemView, TFile, WorkspaceLeaf } from 'obsidian';
+import { ItemView, Platform, TFile, WorkspaceLeaf, setIcon } from 'obsidian';
 import { StrictMode } from 'react';
 import { createRoot, Root } from 'react-dom/client';
 import type ChatterboxPlugin from './main';
@@ -28,6 +28,12 @@ export class ChatterboxView extends ItemView {
 	 * asks it to load a chat would otherwise arrive before anyone is listening.
 	 */
 	private pendingChat: TFile | null = null;
+	/**
+	 * Close button added to the drawer's own tab bar on mobile. It lives in
+	 * Obsidian's chrome rather than in this view, so it has to be put back
+	 * whenever the leaf moves and taken away when the view closes.
+	 */
+	private drawerCloseEl: HTMLElement | null = null;
 
 	constructor(leaf: WorkspaceLeaf, plugin: ChatterboxPlugin) {
 		super(leaf);
@@ -70,6 +76,43 @@ export class ChatterboxView extends ItemView {
 		return this.actions;
 	}
 
+	/** The drawer this leaf sits in, or null anywhere else. */
+	private drawer(): { collapse: () => void } | null {
+		const root = this.leaf.getRoot();
+		const { leftSplit, rightSplit } = this.app.workspace;
+		if (root === rightSplit) return rightSplit;
+		if (root === leftSplit) return leftSplit;
+		return null;
+	}
+
+	/**
+	 * Puts a back button at the left of the drawer's tab bar. Without it a
+	 * phone has no way out of this panel: the drawer covers the whole screen,
+	 * so its backdrop cannot be tapped, and the panel opts out of the swipe
+	 * that would otherwise close it (see onOpen).
+	 */
+	private syncDrawerCloseButton(): void {
+		this.drawerCloseEl?.remove();
+		this.drawerCloseEl = null;
+		if (!Platform.isMobile) return;
+
+		const drawer = this.drawer();
+		const tabOptions = this.containerEl
+			.closest('.workspace-drawer')
+			?.querySelector('.workspace-drawer-tab-options');
+		if (!drawer || !tabOptions) return;
+
+		const button = createDiv('clickable-icon chatterbox-drawer-close');
+		setIcon(button, 'chevron-left');
+		button.setAttr('aria-label', 'Close panel');
+		button.addEventListener('click', () => {
+			drawer.collapse();
+		});
+
+		tabOptions.prepend(button);
+		this.drawerCloseEl = button;
+	}
+
 	protected onOpen(): Promise<void> {
 		// On mobile the sidebar drawer closes on a horizontal swipe, which
 		// takes over any touch that begins in the panel and so makes text
@@ -79,6 +122,16 @@ export class ChatterboxView extends ItemView {
 		// for exactly this reason, which is why notes are selectable and this
 		// panel was not.
 		this.contentEl.dataset.ignoreSwipe = 'true';
+
+		// Also re-run on layout change: the button belongs to whichever drawer
+		// currently holds this leaf, so moving between sidebars, a tab, or a
+		// pop-out window has to move or drop it.
+		this.syncDrawerCloseButton();
+		this.registerEvent(
+			this.app.workspace.on('layout-change', () => {
+				this.syncDrawerCloseButton();
+			}),
+		);
 
 		this.root = createRoot(this.contentEl);
 		this.root.render(
@@ -92,6 +145,8 @@ export class ChatterboxView extends ItemView {
 	}
 
 	protected onClose(): Promise<void> {
+		this.drawerCloseEl?.remove();
+		this.drawerCloseEl = null;
 		this.actions = null;
 		this.root?.unmount();
 		this.root = null;
