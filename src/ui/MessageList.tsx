@@ -176,8 +176,13 @@ export function MessageList({
 			</div>
 
 			{!following && (
-				<button className="chatterbox-jump" onClick={jumpToLatest}>
-					Jump to latest
+				<button
+					className="chatterbox-jump"
+					onClick={jumpToLatest}
+					aria-label="Jump to latest"
+					title="Jump to latest"
+				>
+					<Icon name="chevron-down" fallback="↓" />
 				</button>
 			)}
 		</div>

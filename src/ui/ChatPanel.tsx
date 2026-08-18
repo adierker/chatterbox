@@ -152,7 +152,9 @@ export function ChatPanel({ plugin, view }: ChatPanelProps) {
 
 	return (
 		<div
-			className={`chatterbox-panel${dragging ? ' chatterbox-dropping' : ''}`}
+			className={`chatterbox-panel${dragging ? ' chatterbox-dropping' : ''}${
+				editingId === null ? '' : ' chatterbox-editing'
+			}`}
 			onDragOver={(event) => {
 				// Required, or the browser refuses the drop entirely.
 				event.preventDefault();

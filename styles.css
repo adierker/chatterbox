@@ -510,14 +510,20 @@
 	min-height: 0;
 }
 
+/* Round and icon-only, tucked into the corner: it is a way back to the bottom,
+   not a thing to read. Kept clear of the scrollbar gutter on the right. */
 .chatterbox-jump {
 	position: absolute;
 	bottom: var(--size-4-3);
-	left: 50%;
-	transform: translateX(-50%);
+	right: var(--size-4-3);
 	z-index: 1;
-	padding: var(--size-4-1) var(--size-4-3);
-	font-size: var(--font-ui-smaller);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: var(--size-4-8);
+	height: var(--size-4-8);
+	padding: 0;
+	border-radius: 50%;
 	box-shadow: var(--shadow-s);
 	cursor: pointer;
 }
@@ -530,6 +536,20 @@
 
 .is-mobile .chatterbox-composer {
 	gap: var(--size-4-1);
+}
+
+/*
+ * While a message further up is being edited, the composer is dead weight: it
+ * cannot be sent from, and the editor has its own save and cancel. On a phone
+ * it is worse than dead, because the panel now ends above the keyboard and the
+ * composer eats the space the editor needs.
+ *
+ * Keyed on the edit, not on focus. Focus moves around inside the editor — to
+ * the model dropdown, to a button — and hiding on :focus would flap the
+ * composer in and out, shifting the layout under a thumb mid-edit.
+ */
+.is-mobile .chatterbox-editing .chatterbox-composer {
+	display: none;
 }
 
 .is-mobile .chatterbox-messages {
