@@ -727,3 +727,33 @@
 	--icon-size: var(--icon-s);
 	--icon-stroke: var(--icon-s-stroke-width);
 }
+
+/*
+ * Streamed thinking. Muted and small so a long trace never competes with the
+ * reply it belongs to, and closed by default — see the Reasoning component.
+ */
+.chatterbox-reasoning {
+	margin-bottom: var(--size-4-2);
+	font-size: var(--font-ui-smaller);
+	color: var(--text-muted);
+}
+
+.chatterbox-reasoning > summary {
+	cursor: pointer;
+	color: var(--text-faint);
+	user-select: none;
+	-webkit-user-select: none;
+}
+
+/* Capped so an xhigh trace cannot push the reply off the screen. */
+.chatterbox-reasoning > pre {
+	max-height: 40vh;
+	overflow: auto;
+	margin: var(--size-4-2) 0 0;
+	padding: var(--size-4-2);
+	border-radius: var(--radius-s);
+	background-color: var(--background-secondary);
+	font-size: var(--font-ui-smaller);
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+}

@@ -67,6 +67,22 @@ describe('round trip', () => {
 		const parsed = parseTranscript(CANONICAL.replace(/\n/g, '\r\n'));
 		assert.equal(serializeTranscript(parsed), CANONICAL);
 	});
+
+	it('never writes streamed thinking to the file', () => {
+		// Thinking is watched live and then dropped: it can outrun the reply,
+		// and these files sync to every device.
+		const parsed = parseTranscript(CANONICAL);
+		const thinking = 'Reasoning that should never be saved.';
+		const messages = parsed.messages.map((message) =>
+			message.role === 'assistant'
+				? { ...message, reasoning: thinking }
+				: message,
+		);
+
+		const written = serializeTranscript({ ...parsed, messages });
+		assert.equal(written.includes(thinking), false);
+		assert.equal(written, CANONICAL);
+	});
 });
 
 describe('parseTranscript', () => {

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { buildRequestBody, extractDelta, parseSseBuffer } from './openrouter';
+import { buildRequestBody, extractDeltas, parseSseBuffer } from './openrouter';
 
 describe('buildRequestBody', () => {
 	const base = { model: 'z-ai/glm-5.2', messages: [] };
@@ -194,28 +194,77 @@ describe('parseSseBuffer', () => {
 	});
 });
 
-describe('extractDelta', () => {
+describe('extractDeltas', () => {
 	it('pulls out the content delta', () => {
 		const payload = '{"choices":[{"delta":{"content":"Hello"}}]}';
-		assert.equal(extractDelta(payload), 'Hello');
+		assert.deepEqual(extractDeltas(payload), [
+			{ kind: 'content', text: 'Hello' },
+		]);
 	});
 
-	it('returns null for a role-only opening chunk', () => {
+	it('pulls thinking out of reasoning_details', () => {
+		const payload =
+			'{"choices":[{"delta":{"reasoning_details":[{"type":"reasoning.text","text":"Let me"}]}}]}';
+		assert.deepEqual(extractDeltas(payload), [
+			{ kind: 'reasoning', text: 'Let me' },
+		]);
+	});
+
+	it('reads a summary detail as thinking too', () => {
+		const payload =
+			'{"choices":[{"delta":{"reasoning_details":[{"type":"reasoning.summary","summary":"Weighing it"}]}}]}';
+		assert.deepEqual(extractDeltas(payload), [
+			{ kind: 'reasoning', text: 'Weighing it' },
+		]);
+	});
+
+	it('skips encrypted details, which carry no readable text', () => {
+		const payload =
+			'{"choices":[{"delta":{"reasoning_details":[{"type":"reasoning.encrypted","data":"AQID"}]}}]}';
+		assert.deepEqual(extractDeltas(payload), []);
+	});
+
+	it('keeps reasoning and content from one chunk in order', () => {
+		const payload =
+			'{"choices":[{"delta":{"reasoning_details":[{"type":"reasoning.text","text":"so"}],"content":"Yes"}}]}';
+		assert.deepEqual(extractDeltas(payload), [
+			{ kind: 'reasoning', text: 'so' },
+			{ kind: 'content', text: 'Yes' },
+		]);
+	});
+
+	it('falls back to the legacy reasoning string', () => {
+		const payload = '{"choices":[{"delta":{"reasoning":"Hmm"}}]}';
+		assert.deepEqual(extractDeltas(payload), [
+			{ kind: 'reasoning', text: 'Hmm' },
+		]);
+	});
+
+	it('ignores the legacy field when details are present', () => {
+		// A provider sending both would otherwise be counted twice.
+		const payload =
+			'{"choices":[{"delta":{"reasoning":"Hmm","reasoning_details":[{"type":"reasoning.text","text":"Hmm"}]}}]}';
+		assert.deepEqual(extractDeltas(payload), [
+			{ kind: 'reasoning', text: 'Hmm' },
+		]);
+	});
+
+	it('returns nothing for a role-only opening chunk', () => {
 		const payload = '{"choices":[{"delta":{"role":"assistant"}}]}';
-		assert.equal(extractDelta(payload), null);
+		assert.deepEqual(extractDeltas(payload), []);
 	});
 
-	it('returns null for a usage-only final chunk', () => {
+	it('returns nothing for a usage-only final chunk', () => {
 		const payload = '{"choices":[],"usage":{"total_tokens":12}}';
-		assert.equal(extractDelta(payload), null);
+		assert.deepEqual(extractDeltas(payload), []);
 	});
 
 	it('throws with the message from a mid-stream error object', () => {
 		const payload = '{"error":{"code":429,"message":"Rate limited"}}';
-		assert.throws(() => extractDelta(payload), /Rate limited/);
+		assert.throws(() => extractDeltas(payload), /Rate limited/);
 	});
 
 	it('throws on a payload that is not JSON', () => {
-		assert.throws(() => extractDelta('<html>502</html>'), /Unreadable/);
+		assert.throws(() => extractDeltas('<html>502</html>'), /Unreadable/);
 	});
 });

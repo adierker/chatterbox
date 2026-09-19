@@ -134,6 +134,7 @@ export function MessageList({
 						/>
 					) : (
 						<>
+							<Reasoning text={message.reasoning} />
 							<Body
 								message={message}
 								streaming={message.id === streamingId}
@@ -186,6 +187,26 @@ export function MessageList({
 				</button>
 			)}
 		</div>
+	);
+}
+
+/**
+ * The model's thinking, streamed in live. A plain <details>, so it is closed
+ * on arrival and openable at any point without this component holding any
+ * state — including while the text is still coming in.
+ *
+ * Rendered as preformatted text rather than markdown: thinking is a draft, and
+ * a stray heading or half-written list mid-stream would reflow the panel under
+ * whatever is being read.
+ */
+function Reasoning({ text }: { text: string | undefined }) {
+	if (text === undefined || text === '') return null;
+
+	return (
+		<details className="chatterbox-reasoning">
+			<summary>Thinking</summary>
+			<pre>{text}</pre>
+		</details>
 	);
 }
 

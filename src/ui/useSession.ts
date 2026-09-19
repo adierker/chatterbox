@@ -8,7 +8,12 @@ import {
 	validateParameters,
 	withDefaults,
 } from '../parameters';
-import { appendContent, appendMessage, createMessage } from '../messages';
+import {
+	appendContent,
+	appendMessage,
+	appendReasoning,
+	createMessage,
+} from '../messages';
 import {
 	UnavailableNote,
 	buildContextBlock,
@@ -346,7 +351,9 @@ export function useSession(plugin: ChatterboxPlugin): Session {
 					signal: controller.signal,
 				})) {
 					update((previous) =>
-						appendContent(previous, assistant.id, delta),
+						delta.kind === 'reasoning'
+							? appendReasoning(previous, assistant.id, delta.text)
+							: appendContent(previous, assistant.id, delta.text),
 					);
 				}
 

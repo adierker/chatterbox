@@ -48,3 +48,16 @@ export function appendContent(
 			: message,
 	);
 }
+
+/** Appends streamed thinking to one message, identified by id. */
+export function appendReasoning(
+	messages: readonly ChatMessage[],
+	id: string,
+	delta: string,
+): ChatMessage[] {
+	return messages.map((message) =>
+		message.id === id
+			? { ...message, reasoning: (message.reasoning ?? '') + delta }
+			: message,
+	);
+}

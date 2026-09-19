@@ -128,18 +128,38 @@ export function parseSseBuffer(buffer: string): SseParseResult {
 	return { events, rest };
 }
 
+/** One piece of a reply: either the answer itself or the thinking behind it. */
+export interface StreamDelta {
+	kind: 'content' | 'reasoning';
+	text: string;
+}
+
+interface ReasoningDetail {
+	type?: string;
+	text?: string;
+	summary?: string;
+}
+
 interface StreamChunk {
-	choices?: { delta?: { content?: string } }[];
+	choices?: {
+		delta?: {
+			content?: string;
+			reasoning?: string;
+			reasoning_details?: ReasoningDetail[];
+		};
+	}[];
 	error?: { message?: string };
 }
 
 /**
- * Pulls the text delta out of one SSE payload. Returns null for payloads that
- * carry no text (role-only openers, usage-only final chunks).
+ * Pulls the deltas out of one SSE payload. A chunk can carry reasoning and
+ * content at once, and several reasoning details at once, so this returns a
+ * list — empty for payloads that carry no text (role-only openers, usage-only
+ * final chunks).
  *
  * @throws if the payload is an error object or is not JSON at all.
  */
-export function extractDelta(payload: string): string | null {
+export function extractDeltas(payload: string): StreamDelta[] {
 	let chunk: StreamChunk;
 	try {
 		chunk = JSON.parse(payload) as StreamChunk;
@@ -151,7 +171,31 @@ export function extractDelta(payload: string): string | null {
 		throw new Error(chunk.error.message ?? 'Unknown OpenRouter stream error');
 	}
 
-	return chunk.choices?.[0]?.delta?.content ?? null;
+	const delta = chunk.choices?.[0]?.delta;
+	if (!delta) return [];
+
+	const deltas: StreamDelta[] = [];
+
+	// reasoning_details is the current field and reasoning the legacy one.
+	// Only fall back when details are absent: a provider that sends both would
+	// otherwise have its thinking counted twice. Encrypted details carry no
+	// readable text and are skipped.
+	if (delta.reasoning_details) {
+		for (const detail of delta.reasoning_details) {
+			const text = detail.text ?? detail.summary;
+			if (text !== undefined && text !== '') {
+				deltas.push({ kind: 'reasoning', text });
+			}
+		}
+	} else if (delta.reasoning !== undefined && delta.reasoning !== '') {
+		deltas.push({ kind: 'reasoning', text: delta.reasoning });
+	}
+
+	if (delta.content !== undefined && delta.content !== '') {
+		deltas.push({ kind: 'content', text: delta.content });
+	}
+
+	return deltas;
 }
 
 async function readErrorMessage(response: Response): Promise<string> {
@@ -185,7 +229,7 @@ function tryParseJson(text: string): unknown {
  */
 export async function* streamCompletion(
 	request: CompletionRequest,
-): AsyncGenerator<string> {
+): AsyncGenerator<StreamDelta> {
 	const response = await fetch(OPENROUTER_URL, {
 		method: 'POST',
 		headers: {
@@ -220,8 +264,7 @@ export async function* streamCompletion(
 
 			for (const payload of events) {
 				if (payload === '[DONE]') return;
-				const delta = extractDelta(payload);
-				if (delta) yield delta;
+				yield* extractDeltas(payload);
 			}
 		}
 	} finally {

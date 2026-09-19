@@ -49,6 +49,13 @@ export interface ChatMessage {
 	/** Model that produced this text. Set on assistant messages only. */
 	model?: string;
 	/**
+	 * Thinking streamed alongside the reply. Deliberately not written to the
+	 * transcript and never sent back: it can outrun the reply itself, and the
+	 * file syncs to every device while the context is wanted for attached
+	 * chapters. It lives for as long as the chat stays loaded.
+	 */
+	reasoning?: string;
+	/**
 	 * Parameters in effect when this text was produced. Stamped per message so
 	 * changing settings mid-chat does not rewrite the history of what actually
 	 * generated the earlier responses (SPEC §10 Q6).

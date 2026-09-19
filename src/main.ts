@@ -273,7 +273,8 @@ export default class ChatterboxPlugin extends Plugin {
 			messages: request,
 			system: null,
 		})) {
-			title += delta;
+			// Thinking is not part of the title, only the answer is.
+			if (delta.kind === 'content') title += delta.text;
 		}
 
 		const cleaned = sanitizeTitle(
