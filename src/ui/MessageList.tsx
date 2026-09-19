@@ -244,6 +244,33 @@ function Reasoning({
 	);
 }
 
+/**
+ * Counts up while nothing has arrived. Some providers send absolutely nothing
+ * until the model has finished thinking — half a minute of it is normal at a
+ * high effort — and a motionless ellipsis through all of that is
+ * indistinguishable from a request that has died.
+ */
+function Waiting() {
+	const [seconds, setSeconds] = useState(0);
+
+	useEffect(() => {
+		// Window-qualified so a panel in a pop-out uses its own timers.
+		const id = window.setInterval(() => {
+			setSeconds((previous) => previous + 1);
+		}, 1000);
+		return () => {
+			window.clearInterval(id);
+		};
+	}, []);
+
+	// Silent for the first moment, so a quick reply does not flash a counter.
+	return (
+		<span className="chatterbox-waiting">
+			{seconds < 2 ? '…' : `… ${String(seconds)}s`}
+		</span>
+	);
+}
+
 function distanceFromBottom(element: HTMLElement): number {
 	return element.scrollHeight - element.scrollTop - element.clientHeight;
 }
@@ -346,9 +373,7 @@ function Body({
 		return (
 			<div className="chatterbox-plain">
 				{message.content}
-				{streaming && message.content === '' && (
-					<span className="chatterbox-waiting">…</span>
-				)}
+				{streaming && message.content === '' && <Waiting />}
 			</div>
 		);
 	}
