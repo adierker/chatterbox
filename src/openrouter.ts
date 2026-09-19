@@ -69,19 +69,24 @@ export function buildRequestBody(
 		body['reasoning'] = { enabled: false };
 	}
 
-	// OpenRouter runs the search itself and injects the results, so this stays
-	// a single request — no tool-call round trip, and no agent loop (SPEC §2).
-	// Engine is left unset on purpose: it uses the model's own search where
-	// there is one and falls back to Exa otherwise, which is what the models
-	// configured here get.
+	// Server tools, not the `web` plugin. The plugin sends the last user
+	// message to the search engine verbatim and staples the results on before
+	// the model runs, so "try now" searches for the phrase "try now". These let
+	// the model write its own queries, search more than once or not at all, and
+	// fetch a page it has found a link to.
+	//
+	// Still one request and one stream: OpenRouter runs the tools on its own
+	// servers and never hands back a tool call, so there is no agent loop here
+	// (SPEC §2). Requires a model that supports tool calling.
 	if (parameters.webSearch === true) {
-		body['plugins'] = [
+		body['tools'] = [
 			{
-				id: 'web',
+				type: 'openrouter:web_search',
 				...(request.webMaxResults !== undefined
-					? { max_results: request.webMaxResults }
+					? { parameters: { max_results: request.webMaxResults } }
 					: {}),
 			},
+			{ type: 'openrouter:web_fetch' },
 		];
 	}
 

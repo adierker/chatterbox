@@ -362,7 +362,7 @@ export class ChatterboxSettingTab extends PluginSettingTab {
 		new Setting(containerEl)
 			.setName('Web search results')
 			.setDesc(
-				'How many results to fetch when a chat has web search on. Search is off unless a chat turns it on, and every search is billed by OpenRouter.',
+				'Results per search, when a chat has web search on. The model decides whether to search at all and may search more than once, so a request can cost nothing or several searches. Needs a model that supports tool calling.',
 			)
 			.addText((text) =>
 				text
