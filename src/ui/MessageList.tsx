@@ -51,9 +51,7 @@ export function MessageList({
 		const element = scrollRef.current;
 		if (!element) return;
 
-		const distance =
-			element.scrollHeight - element.scrollTop - element.clientHeight;
-		setFollow(distance < 64);
+		setFollow(distanceFromBottom(element) < FOLLOW_SLACK);
 	};
 
 	useEffect(() => {
@@ -223,7 +221,7 @@ function Reasoning({
 	const open = override ?? thinking;
 	// Every hook runs before the early return below, or the hook count would
 	// change on the render where thinking first arrives.
-	const scrollRef = useStickToBottom(open && thinking);
+	const trace = useStickToBottom(open && thinking);
 
 	if (text === undefined || text === '') return null;
 
@@ -239,25 +237,56 @@ function Reasoning({
 			}}
 		>
 			<summary>Thinking</summary>
-			<pre ref={scrollRef}>{text}</pre>
+			{/* Kept on one line: this is a <pre>, and stray indentation in the
+			    markup would be part of the text. */}
+			<pre ref={trace.ref} onScroll={trace.onScroll}>{text}</pre>
 		</details>
 	);
 }
 
+function distanceFromBottom(element: HTMLElement): number {
+	return element.scrollHeight - element.scrollTop - element.clientHeight;
+}
+
+/** How far from the bottom of the conversation still counts as following it. */
+const FOLLOW_SLACK = 64;
+
 /**
- * Keeps a scrolling box pinned to its newest line while `active`. The trace is
- * taller than its box almost immediately, so without this the visible part
- * stops updating a second in and looks frozen.
+ * Tighter inside the thinking box, which is a fraction of the panel's height:
+ * 64px there is several lines, so nudging up a line or two would not release
+ * the pin and the text would keep racing away.
+ */
+const TRACE_FOLLOW_SLACK = 16;
+
+/**
+ * Keeps a scrolling box pinned to its newest line while `active`, until the
+ * reader scrolls up. The trace outgrows its box almost immediately, so without
+ * the pin the visible part stops changing and looks frozen — but with an
+ * unconditional pin it scrolls far too fast to read. Scrolling back to the
+ * bottom resumes following.
  */
 function useStickToBottom(active: boolean) {
 	const ref = useRef<HTMLPreElement>(null);
+	const followingRef = useRef(true);
 
 	useEffect(() => {
 		const element = ref.current;
-		if (element && active) element.scrollTop = element.scrollHeight;
+		if (element && active && followingRef.current) {
+			element.scrollTop = element.scrollHeight;
+		}
 	});
 
-	return ref;
+	// Pinning scrolls too, which lands at a distance of zero and so reads as
+	// still following. Only the reader's own scrolling moves it away.
+	const onScroll = () => {
+		const element = ref.current;
+		if (element) {
+			followingRef.current =
+				distanceFromBottom(element) < TRACE_FOLLOW_SLACK;
+		}
+	};
+
+	return { ref, onScroll };
 }
 
 /**
