@@ -16,6 +16,8 @@ export interface CompletionRequest {
 	parameters?: ChatParameters;
 	/** Restricts which upstream providers may serve this request. */
 	provider?: ProviderRouting | null;
+	/** Results to fetch when web search is on. Ignored when it is off. */
+	webMaxResults?: number;
 	signal?: AbortSignal;
 }
 
@@ -65,6 +67,22 @@ export function buildRequestBody(
 				: { effort: parameters.reasoningEffort };
 	} else if (parameters.reasoning === false) {
 		body['reasoning'] = { enabled: false };
+	}
+
+	// OpenRouter runs the search itself and injects the results, so this stays
+	// a single request — no tool-call round trip, and no agent loop (SPEC §2).
+	// Engine is left unset on purpose: it uses the model's own search where
+	// there is one and falls back to Exa otherwise, which is what the models
+	// configured here get.
+	if (parameters.webSearch === true) {
+		body['plugins'] = [
+			{
+				id: 'web',
+				...(request.webMaxResults !== undefined
+					? { max_results: request.webMaxResults }
+					: {}),
+			},
+		];
 	}
 
 	return body;

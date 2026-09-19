@@ -14,6 +14,7 @@ top_p: 0.95
 max_tokens: 4096
 reasoning: true
 reasoning_effort: high
+web_search: true
 system_prompt: "Standing instructions for this conversation."
 context:
   - "Reference/Overview.md"
@@ -29,7 +30,7 @@ forked_at: 6
 
 Does section 7 lose momentum in the middle?
 
-<!--msg:assistant id=d4e5f6 model=z-ai/glm-5.2 temperature=0.7-->
+<!--msg:assistant id=d4e5f6 model=z-ai/glm-5.2 temperature=0.7 web_search=true-->
 
 The middle section moves slowly, but that may be intentional.
 `;
@@ -90,6 +91,7 @@ describe('parseTranscript', () => {
 			maxTokens: 4096,
 			reasoning: true,
 			reasoningEffort: 'high',
+			webSearch: true,
 		});
 	});
 
@@ -102,7 +104,10 @@ describe('parseTranscript', () => {
 	it('reads the per-message parameter stamp', () => {
 		const { messages } = parseTranscript(CANONICAL);
 		assert.equal(messages[1]?.model, 'z-ai/glm-5.2');
-		assert.deepEqual(messages[1]?.parameters, { temperature: 0.7 });
+		assert.deepEqual(messages[1]?.parameters, {
+			temperature: 0.7,
+			webSearch: true,
+		});
 	});
 
 	it('accepts hand-written unquoted values', () => {

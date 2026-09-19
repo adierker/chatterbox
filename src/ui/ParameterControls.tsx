@@ -160,6 +160,34 @@ export function ParameterControls({
 				</select>
 			</label>
 
+			{/*
+			  * Two states, unlike Reasoning: OpenRouter has no "provider
+			  * default" for search, and pulling in material the author did not
+			  * attach should never happen by omission.
+			  */}
+			<label className="chatterbox-param-row">
+				<span>
+					Web search{' '}
+					<span className="chatterbox-hint">costs per request</span>
+				</span>
+				<select
+					className="dropdown"
+					value={parameters.webSearch === true ? 'on' : 'off'}
+					onChange={(event) => {
+						const next = { ...parameters };
+						if (event.target.value === 'on') {
+							next.webSearch = true;
+						} else {
+							delete next.webSearch;
+						}
+						onChange(next);
+					}}
+				>
+					<option value="off">Off</option>
+					<option value="on">On</option>
+				</select>
+			</label>
+
 			<div className="chatterbox-param-footer">
 				<span className="chatterbox-hint">
 					Applies to this chat. Blank is omitted.

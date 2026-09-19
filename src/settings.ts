@@ -41,6 +41,8 @@ export interface ChatterboxSettings {
 	providerPins: ProviderPins;
 	/** Providers to refuse. Use `*` as the model to block one everywhere. */
 	providerBlocks: ProviderPins;
+	/** Results fetched per search, when a chat has web search on. */
+	webSearchResults: number;
 }
 
 export const DEFAULT_SETTINGS: ChatterboxSettings = {
@@ -65,6 +67,9 @@ export const DEFAULT_SETTINGS: ChatterboxSettings = {
 	providerPins: { 'moonshotai/kimi-k3': ['moonshotai'] },
 	// Alibaba applies its own content filtering, which alters replies.
 	providerBlocks: { '*': ['alibaba'] },
+	// OpenRouter's own default. Exa bills per request up to ten results, so
+	// anything under that costs the same as ten.
+	webSearchResults: 5,
 };
 
 const SECRET_ID = 'chatterbox-openrouter-key';
@@ -353,6 +358,22 @@ export class ChatterboxSettingTab extends PluginSettingTab {
 					await this.plugin.saveSettings();
 				});
 			});
+
+		new Setting(containerEl)
+			.setName('Web search results')
+			.setDesc(
+				'How many results to fetch when a chat has web search on. Search is off unless a chat turns it on, and every search is billed by OpenRouter.',
+			)
+			.addText((text) =>
+				text
+					.setValue(String(this.plugin.settings.webSearchResults))
+					.onChange(async (value) => {
+						const parsed = Number(value.trim());
+						if (!Number.isInteger(parsed) || parsed < 1) return;
+						this.plugin.settings.webSearchResults = parsed;
+						await this.plugin.saveSettings();
+					}),
+			);
 
 		new Setting(containerEl)
 			.setName('Chat folder')

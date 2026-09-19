@@ -50,6 +50,9 @@ function parameterLines(parameters: ChatParameters): string[] {
 	if (parameters.reasoningEffort !== undefined) {
 		lines.push(`reasoning_effort: ${parameters.reasoningEffort}`);
 	}
+	if (parameters.webSearch !== undefined) {
+		lines.push(`web_search: ${String(parameters.webSearch)}`);
+	}
 	return lines;
 }
 
@@ -102,6 +105,9 @@ function serializeAttributes(message: ChatMessage): string {
 	}
 	if (parameters.reasoningEffort !== undefined) {
 		attributes.push(`reasoning_effort=${parameters.reasoningEffort}`);
+	}
+	if (parameters.webSearch !== undefined) {
+		attributes.push(`web_search=${String(parameters.webSearch)}`);
 	}
 
 	return attributes
@@ -189,6 +195,9 @@ function applyParameter(
 			return true;
 		case 'reasoning_effort':
 			parameters.reasoningEffort = parseEffort(raw, key);
+			return true;
+		case 'web_search':
+			parameters.webSearch = parseBoolean(raw, key);
 			return true;
 		default:
 			return false;

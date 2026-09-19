@@ -33,6 +33,13 @@ export interface ChatParameters {
 	 */
 	reasoning?: boolean;
 	reasoningEffort?: ReasoningEffort;
+	/**
+	 * Lets OpenRouter search the web and put the results in front of the model
+	 * before it answers. Two states, not three: there is no provider default to
+	 * defer to, and content arriving that the author did not attach is a
+	 * deliberate act, so unset means off.
+	 */
+	webSearch?: boolean;
 }
 
 export interface ChatMessage {

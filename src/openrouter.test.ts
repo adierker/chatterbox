@@ -80,6 +80,36 @@ describe('buildRequestBody', () => {
 		assert.deepEqual(body['reasoning'], { enabled: true });
 	});
 
+	it('omits the web plugin unless search is on', () => {
+		// Unset is off: search pulls in material the author never attached, so
+		// it must never happen by omission.
+		assert.equal('plugins' in buildRequestBody(base), false);
+		assert.equal(
+			'plugins' in
+				buildRequestBody({ ...base, parameters: { webSearch: false } }),
+			false,
+		);
+	});
+
+	it('sends the web plugin with the configured result count', () => {
+		const body = buildRequestBody({
+			...base,
+			parameters: { webSearch: true },
+			webMaxResults: 5,
+		});
+		assert.deepEqual(body['plugins'], [{ id: 'web', max_results: 5 }]);
+	});
+
+	it('leaves the result count to OpenRouter when none is given', () => {
+		const body = buildRequestBody({ ...base, parameters: { webSearch: true } });
+		assert.deepEqual(body['plugins'], [{ id: 'web' }]);
+	});
+
+	it('ignores the result count while search is off', () => {
+		const body = buildRequestBody({ ...base, webMaxResults: 5 });
+		assert.equal('plugins' in body, false);
+	});
+
 	it('prepends the system message only when there is one', () => {
 		const withSystem = buildRequestBody({ ...base, system: 'Be terse.' });
 		assert.deepEqual(withSystem['messages'], [

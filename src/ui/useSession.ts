@@ -342,6 +342,7 @@ export function useSession(plugin: ChatterboxPlugin): Session {
 						plugin.settings.providerPins,
 						plugin.settings.providerBlocks,
 					),
+					webMaxResults: plugin.settings.webSearchResults,
 					signal: controller.signal,
 				})) {
 					update((previous) =>
