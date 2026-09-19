@@ -134,7 +134,19 @@ export function MessageList({
 						/>
 					) : (
 						<>
-							<Reasoning text={message.reasoning} />
+							{/*
+							  * Open while it is thinking, closed once the
+							  * reply starts. Reasoning almost always finishes
+							  * before the first word of the answer, so a block
+							  * that stays shut is shut for the whole of it.
+							  */}
+							<Reasoning
+								text={message.reasoning}
+								thinking={
+									message.id === streamingId &&
+									message.content === ''
+								}
+							/>
 							<Body
 								message={message}
 								streaming={message.id === streamingId}
@@ -199,15 +211,53 @@ export function MessageList({
  * a stray heading or half-written list mid-stream would reflow the panel under
  * whatever is being read.
  */
-function Reasoning({ text }: { text: string | undefined }) {
+function Reasoning({
+	text,
+	thinking,
+}: {
+	text: string | undefined;
+	thinking: boolean;
+}) {
+	// null means "follow the stream"; true or false is the reader overriding it.
+	const [override, setOverride] = useState<boolean | null>(null);
+	const open = override ?? thinking;
+	// Every hook runs before the early return below, or the hook count would
+	// change on the render where thinking first arrives.
+	const scrollRef = useStickToBottom(open && thinking);
+
 	if (text === undefined || text === '') return null;
 
 	return (
-		<details className="chatterbox-reasoning">
+		<details
+			className="chatterbox-reasoning"
+			open={open}
+			onToggle={(event) => {
+				// This fires for programmatic changes too, where the element
+				// already agrees with `open`. Only a disagreement is a click.
+				const next = event.currentTarget.open;
+				if (next !== open) setOverride(next);
+			}}
+		>
 			<summary>Thinking</summary>
-			<pre>{text}</pre>
+			<pre ref={scrollRef}>{text}</pre>
 		</details>
 	);
+}
+
+/**
+ * Keeps a scrolling box pinned to its newest line while `active`. The trace is
+ * taller than its box almost immediately, so without this the visible part
+ * stops updating a second in and looks frozen.
+ */
+function useStickToBottom(active: boolean) {
+	const ref = useRef<HTMLPreElement>(null);
+
+	useEffect(() => {
+		const element = ref.current;
+		if (element && active) element.scrollTop = element.scrollHeight;
+	});
+
+	return ref;
 }
 
 /**
