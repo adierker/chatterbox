@@ -240,6 +240,24 @@ describe('extractDeltas', () => {
 		]);
 	});
 
+	it('falls back when the details array is present but empty', () => {
+		// [] is truthy, so testing the array instead of what it yields drops
+		// every reasoning delta from providers that send both fields.
+		const payload =
+			'{"choices":[{"delta":{"reasoning":"Hmm","reasoning_details":[]}}]}';
+		assert.deepEqual(extractDeltas(payload), [
+			{ kind: 'reasoning', text: 'Hmm' },
+		]);
+	});
+
+	it('falls back when the details hold nothing readable', () => {
+		const payload =
+			'{"choices":[{"delta":{"reasoning":"Hmm","reasoning_details":[{"type":"reasoning.encrypted","data":"AQID"}]}}]}';
+		assert.deepEqual(extractDeltas(payload), [
+			{ kind: 'reasoning', text: 'Hmm' },
+		]);
+	});
+
 	it('ignores the legacy field when details are present', () => {
 		// A provider sending both would otherwise be counted twice.
 		const payload =

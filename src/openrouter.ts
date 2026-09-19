@@ -176,18 +176,24 @@ export function extractDeltas(payload: string): StreamDelta[] {
 
 	const deltas: StreamDelta[] = [];
 
-	// reasoning_details is the current field and reasoning the legacy one.
-	// Only fall back when details are absent: a provider that sends both would
-	// otherwise have its thinking counted twice. Encrypted details carry no
-	// readable text and are skipped.
-	if (delta.reasoning_details) {
-		for (const detail of delta.reasoning_details) {
-			const text = detail.text ?? detail.summary;
-			if (text !== undefined && text !== '') {
-				deltas.push({ kind: 'reasoning', text });
-			}
+	// reasoning_details is the current field and reasoning the legacy one. The
+	// fallback turns on when the details yield no text — not merely when the
+	// field is missing. Providers routinely send an empty details array on
+	// every chunk while streaming the thinking in the legacy field, and testing
+	// the array itself would drop all of it, because [] is truthy.
+	//
+	// Encrypted details carry no readable text, so a chunk holding only those
+	// falls back too. A chunk whose details do yield text ignores the legacy
+	// field, which would otherwise be counted twice.
+	let reasoned = false;
+	for (const detail of delta.reasoning_details ?? []) {
+		const text = detail.text ?? detail.summary;
+		if (text !== undefined && text !== '') {
+			deltas.push({ kind: 'reasoning', text });
+			reasoned = true;
 		}
-	} else if (delta.reasoning !== undefined && delta.reasoning !== '') {
+	}
+	if (!reasoned && delta.reasoning !== undefined && delta.reasoning !== '') {
 		deltas.push({ kind: 'reasoning', text: delta.reasoning });
 	}
 
