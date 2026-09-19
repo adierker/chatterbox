@@ -1,7 +1,7 @@
 {
 	"id": "chatterbox",
 	"name": "Chatterbox",
-	"version": "0.6.3",
+	"version": "0.6.4",
 	"minAppVersion": "1.7.2",
 	"description": "A minimal AI chat panel with explicit context attachment and non-destructive editing.",
 	"author": "adierker",
