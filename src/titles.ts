@@ -86,6 +86,32 @@ export function forkTitle(
 	}
 }
 
+/**
+ * How to refer to a fork's parent in the history list. Forks share their
+ * parent's whole name but for the counter, so spelling the parent out put two
+ * near-identical titles on one row, differing only in a number — which read as
+ * the row contradicting itself rather than as lineage.
+ *
+ * Falls back to the full name when the lineage is not obvious from the titles,
+ * which is the case a short label would actually hide something.
+ */
+export function forkParentLabel(
+	childTitle: string,
+	parentTitle: string,
+): string {
+	const childStem = stripDatePrefix(childTitle);
+	const parentStem = stripDatePrefix(parentTitle);
+
+	const childBase = FORK_SUFFIX.exec(childStem)?.[1] ?? childStem;
+	const parentMatch = FORK_SUFFIX.exec(parentStem);
+	const parentBase = parentMatch?.[1] ?? parentStem;
+
+	if (childBase !== parentBase) return parentTitle;
+
+	const counter = parentMatch?.[2];
+	return counter === undefined ? 'the original' : `fork ${counter}`;
+}
+
 /** Appends a counter until the name is free, e.g. "Pacing 2". */
 export function uniqueTitle(title: string, taken: ReadonlySet<string>): string {
 	if (!taken.has(title)) return title;

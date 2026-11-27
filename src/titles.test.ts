@@ -5,6 +5,7 @@ import {
 	datePrefix,
 	deriveTitle,
 	existingDatePrefix,
+	forkParentLabel,
 	forkTitle,
 	sanitizeTitle,
 	stripDatePrefix,
@@ -165,5 +166,42 @@ describe('uniqueTitle', () => {
 			uniqueTitle('Review', new Set(['Review', 'Review 2'])),
 			'Review 3',
 		);
+	});
+});
+
+describe('forkParentLabel', () => {
+	const CHILD = '26-11-27 - Lucia and Jason Fanfiction (fork 14)';
+
+	it('names only the counter when the lineage is plain', () => {
+		assert.equal(
+			forkParentLabel(CHILD, '26-11-27 - Lucia and Jason Fanfiction (fork 13)'),
+			'fork 13',
+		);
+	});
+
+	it('calls an unnumbered parent the original', () => {
+		assert.equal(
+			forkParentLabel(CHILD, '26-11-27 - Lucia and Jason Fanfiction'),
+			'the original',
+		);
+	});
+
+	it('ignores a difference in date prefix', () => {
+		// A fork is dated when it diverged, so parent and child rarely agree.
+		assert.equal(
+			forkParentLabel(CHILD, '26-08-16 - Lucia and Jason Fanfiction (fork 13)'),
+			'fork 13',
+		);
+	});
+
+	it('spells out a parent with an unrelated name', () => {
+		// Here the short label would hide the only informative part.
+		const parent = '26-11-27 - Something Else Entirely (fork 13)';
+		assert.equal(forkParentLabel(CHILD, parent), parent);
+	});
+
+	it('spells out a renamed parent, counter or not', () => {
+		const parent = '26-11-27 - Renamed By Hand';
+		assert.equal(forkParentLabel(CHILD, parent), parent);
 	});
 });

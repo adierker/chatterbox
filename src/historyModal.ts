@@ -1,5 +1,6 @@
 import { App, EventRef, Modal, TFile, debounce, setIcon } from 'obsidian';
 import { ChatSummary, deleteChat, listChats } from './chatFile';
+import { forkParentLabel } from './titles';
 
 /**
  * History browser (SPEC §4.5): every saved chat, most recent first, filterable
@@ -101,7 +102,7 @@ export class HistoryModal extends Modal {
 				chat.forkedFrom;
 			const link = subtitle.createEl('a', {
 				cls: 'chatterbox-history-parent',
-				text: ` · fork of ${parentName}`,
+				text: ` · forked from ${forkParentLabel(chat.title, parentName)}`,
 				href: '#',
 			});
 			link.addEventListener('click', (event) => {
