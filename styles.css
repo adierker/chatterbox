@@ -127,15 +127,34 @@
 	cursor: pointer;
 }
 
+/*
+ * Wraps rather than clipping. What distinguishes two chats is almost always
+ * the end of the name — "(fork 14)" against "(fork 13)" — and an ellipsis
+ * there removes the only part worth reading, leaving every fork of a story
+ * looking like the same row.
+ */
 .chatterbox-history-title {
-	white-space: nowrap;
-	overflow: hidden;
-	text-overflow: ellipsis;
+	overflow-wrap: anywhere;
 }
 
 .chatterbox-history-meta {
 	font-size: var(--font-ui-smaller);
 	color: var(--text-faint);
+}
+
+/*
+ * Subdued on purpose. Default link styling made this the loudest thing in the
+ * row, so it read as the row's own name — and it is the one target that opens
+ * a different chat than the one clicked.
+ */
+.chatterbox-history-parent {
+	color: var(--text-faint);
+	text-decoration: none;
+}
+
+.chatterbox-history-parent:hover {
+	color: var(--text-accent);
+	text-decoration: underline;
 }
 
 .chatterbox-history-delete {
