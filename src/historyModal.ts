@@ -1,4 +1,4 @@
-import { App, Modal, TFile, setIcon } from 'obsidian';
+import { App, EventRef, Modal, TFile, debounce, setIcon } from 'obsidian';
 import { ChatSummary, deleteChat, listChats } from './chatFile';
 
 /**
@@ -10,6 +10,9 @@ export class HistoryModal extends Modal {
 	private readonly onOpenChat: (file: TFile) => void;
 	private filter = '';
 	private listEl!: HTMLElement;
+	/** Vault subscriptions, released on close. Modal is not a Component, so
+	 *  there is no registerEvent to do it automatically. */
+	private watchers: EventRef[] = [];
 
 	constructor(
 		app: App,
@@ -37,9 +40,28 @@ export class HistoryModal extends Modal {
 		this.listEl = this.contentEl.createDiv('chatterbox-history-list');
 		this.renderList();
 		search.focus();
+
+		// The list was built once and then went stale. Sync can land a chat
+		// seconds after this opens — on another device's schedule, not the
+		// reader's — and without this it stays invisible until the modal is
+		// closed and reopened, which reads as the chat having been lost.
+		//
+		// Debounced because a sync arrives as a burst, and each render rebuilds
+		// every row. Only membership changes are watched: `modify` fires for
+		// every save of the chat being streamed into right now.
+		const refresh = debounce(() => {
+			this.renderList();
+		}, 300);
+		this.watchers.push(
+			this.app.vault.on('create', refresh),
+			this.app.vault.on('delete', refresh),
+			this.app.vault.on('rename', refresh),
+		);
 	}
 
 	onClose(): void {
+		for (const watcher of this.watchers) this.app.vault.offref(watcher);
+		this.watchers = [];
 		this.contentEl.empty();
 	}
 
